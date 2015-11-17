@@ -1,0 +1,4 @@
+/tuf.log
+/setenv.sh
+/repos
+*.pyc
