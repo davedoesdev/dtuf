@@ -20,6 +20,7 @@
 # DTUF_TIMESTAMP_KEY_PASSWORD
 
 # pass repo host through DTUF_HOST
+# to use http, set DTUF_INSECURE to something
 # pass token through DTUF_TOKEN
 
 # pass repositories directory through DTUF_REPOSITORIES_ROOT
@@ -54,7 +55,8 @@ def auth(dtuf_obj, response):
 dtuf_obj = dtuf.DTuf(os.environ['DTUF_HOST'],
                      args.repo,
                      os.environ.get('DTUF_REPOSITORIES_ROOT'),
-                     auth)
+                     auth,
+                     os.environ.get('DTUF_INSECURE'))
 
 def doit():
     if args.op == 'auth':
