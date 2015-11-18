@@ -8,6 +8,7 @@ import tuf
 import tuf.util
 import urlparse
 import threading
+from exceptions import *
 
 _metadata_files = ['root.json',
                    'targets.json',
@@ -161,6 +162,8 @@ class DTuf(object):
         repository.write()
 
     def push_blob(self, filename_or_alias, alias):
+        if alias in _metadata_files:
+            raise DTufReservedAliasError(alias)
         if filename_or_alias.startswith('@'):
             dgst = self._dxf.get_alias(filename_or_alias[1:])[0]
         else:
@@ -304,3 +307,15 @@ class DTuf(object):
         for dgst in dgsts:
             for chunk in self._dxf.pull_blob(dgst):
                 yield chunk
+
+    def list_aliases(self):
+        with _updater_dxf_lock:
+            tuf.conf.repository_directory = self._copy_repo_dir
+            global _updater_dxf
+            _updater_dxf = self._dxf
+            try:
+                updater = tuf.client.updater.Updater('updater',
+                                                     self._repository_mirrors)
+                return [t['filepath'][1:] for t in updater.all_targets()]
+            finally:
+                _updater_dxf = None

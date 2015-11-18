@@ -14,6 +14,7 @@
 #                                      pull metadata from remote and print
 #                                      updated aliases
 # dtuf pull-blob <repo> @alias...      download blobs to stdout
+# dtuf list-aliases <repo>             list all aliases in a repo
 
 # pass private key password through DTUF_ROOT_KEY_PASSWORD,
 # DTUF_TARGETS_KEY_PASSWORD, DTUF_SNAPSHOT_KEY_PASSWORD and
@@ -41,7 +42,8 @@ parser.add_argument('op', choices=['auth',
                                    'del-blob',
                                    'push-metadata',
                                    'pull-metadata',
-                                   'pull-blob'])
+                                   'pull-blob',
+                                   'list-aliases'])
 parser.add_argument('repo')
 parser.add_argument('args', nargs='*')
 args = parser.parse_args()
@@ -67,7 +69,7 @@ def doit():
 
     token = os.environ.get('DTUF_TOKEN')
     if token:
-        dxf_obj.token = token
+        dtuf_obj.token = token
 
     if args.op == 'create-root-key':
         if len(args.args) > 0:
@@ -127,6 +129,12 @@ def doit():
                 parser.error('invalid alias')
             for chunk in dtuf_obj.pull_blob(name[1:]):
                 sys.stdout.write(chunk)
+
+    elif args.op == 'list-aliases':
+        if len(args.args) > 0:
+            parser.error('too many arguments')
+        for name in dtuf_obj.list_aliases():
+            print name
 
 try:
     doit()
