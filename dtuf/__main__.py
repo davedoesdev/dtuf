@@ -15,6 +15,7 @@
 #                                      updated aliases
 # dtuf pull-blob <repo> @alias...      download blobs to stdout
 # dtuf list-aliases <repo>             list all aliases in a repo
+# dtuf list-repos                      list all repos (may not all be TUF)
 
 # pass private key password through DTUF_ROOT_KEY_PASSWORD,
 # DTUF_TARGETS_KEY_PASSWORD, DTUF_SNAPSHOT_KEY_PASSWORD and
@@ -33,32 +34,43 @@ import argparse
 import dtuf
 import dtuf.exceptions
 
-parser = argparse.ArgumentParser()
-parser.add_argument('op', choices=['auth',
-                                   'create-root-key',
-                                   'create-metadata-keys',
-                                   'create-metadata',
-                                   'push-blob',
-                                   'del-blob',
-                                   'push-metadata',
-                                   'pull-metadata',
-                                   'pull-blob',
-                                   'list-aliases'])
-parser.add_argument('repo')
-parser.add_argument('args', nargs='*')
-args = parser.parse_args()
-
 def auth(dtuf_obj, response):
     username = os.environ.get('DTUF_USERNAME')
     password = os.environ.get('DTUF_PASSWORD')
     if username and password:
         dtuf_obj.auth_by_password(username, password, response=response)
 
-dtuf_obj = dtuf.DTuf(os.environ['DTUF_HOST'],
-                     args.repo,
-                     os.environ.get('DTUF_REPOSITORIES_ROOT'),
-                     auth,
-                     os.environ.get('DTUF_INSECURE'))
+choices=['auth',
+         'create-root-key',
+         'create-metadata-keys',
+         'create-metadata',
+         'push-blob',
+         'del-blob',
+         'push-metadata',
+         'pull-metadata',
+         'pull-blob',
+         'list-aliases',
+         'list-repos']
+
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(dest='op')
+for c in choices:
+    sp = subparsers.add_parser(c)
+    if c != 'list-repos':
+        sp.add_argument('repo')
+        sp.add_argument('args', nargs='*')
+
+args = parser.parse_args()
+if args.op == 'list-repos':
+    dtuf_obj = dtuf.DTufBase(os.environ['DTUF_HOST'],
+                             auth,
+                             os.environ.get('DTUF_INSECURE'))
+else:
+    dtuf_obj = dtuf.DTuf(os.environ['DTUF_HOST'],
+                         args.repo,
+                         os.environ.get('DTUF_REPOSITORIES_ROOT'),
+                         auth,
+                         os.environ.get('DTUF_INSECURE'))
 
 def doit():
     if args.op == 'auth':
@@ -134,6 +146,10 @@ def doit():
         if len(args.args) > 0:
             parser.error('too many arguments')
         for name in dtuf_obj.list_aliases():
+            print name
+
+    elif args.op == 'list-repos':
+        for name in dtuf_obj.list_repos():
             print name
 
 try:

@@ -44,13 +44,30 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
 
 tuf.download._download_file = _download_file
 
-class DTuf(object):
+class DTufBase(object):
+    def _wrap_auth(self, auth=None):
+        return lambda dxf_obj, response: auth(self, response) if auth else None
+
+    def __init__(self, host, auth=None, insecure=False):
+        self._dxf = DXFBase(host, self._wrap_auth(auth), insecure)
+
+    @property
+    def token(self):
+        return self._dxf.token
+
+    @token.setter
+    def token(self, value):
+        self._dxf.token = value
+
+    def auth_by_password(self, username, password, actions=[], response=None):
+        return self._dxf.auth_by_password(username, password, actions, response)
+
+    def list_repos(self):
+        return self._dxf.list_repos()
+
+class DTuf(DTufBase):
     def __init__(self, host, repo, repos_root=None, auth=None, insecure=False):
-        if auth:
-            authf = lambda dxf_obj, response: auth(self, response)
-        else:
-            authf = None
-        self._dxf = DXF(host, repo, authf, insecure)
+        self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure)
         self._repo_root = path.join(repos_root if repos_root else getcwd(), repo)
         self._master_dir = path.join(self._repo_root, 'master')
         self._keys_dir = path.join(self._master_dir, 'keys')
@@ -72,17 +89,6 @@ class DTuf(object):
                 'confined_target_dirs': ['']
             }
         }
-
-    @property
-    def token(self):
-        return self._dxf.token
-
-    @token.setter
-    def token(self, value):
-        self._dxf.token = value
-
-    def auth_by_password(self, username, password, actions=[], response=None):
-        return self._dxf.auth_by_password(username, password, actions, response)
 
     def create_root_key(self, password=None):
         if password is None:
