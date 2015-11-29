@@ -8,7 +8,7 @@ import tuf
 import tuf.util
 import urlparse
 import threading
-from exceptions import *
+from .exceptions import *
 
 _metadata_files = ['root.json',
                    'targets.json',
@@ -294,8 +294,8 @@ class DTuf(DTufBase):
                 return [t['filepath'][1:] for t in updated_targets]
             finally:
                 _updater_dxf = None
-        
-    def pull_blob(self, alias):
+
+    def _get_digest(self, alias):
         with _updater_dxf_lock:
             tuf.conf.repository_directory = self._copy_repo_dir
             global _updater_dxf
@@ -310,9 +310,18 @@ class DTuf(DTufBase):
             finally:
                 _updater_dxf = None
         dgsts = self._dxf.get_alias(manifest=manifest, verify=False)
-        for dgst in dgsts:
-            for chunk in self._dxf.pull_blob(dgst):
-                yield chunk
+        assert len(dgsts) == 1
+        return dgsts[0]
+
+    def pull_blob(self, alias):
+        for chunk in self._dxf.pull_blob(self._get_digest(alias)):
+            yield chunk
+
+    def check_blob(self, filename, alias):
+        file_dgst = dxf.hash_file(filename)
+        alias_dgst = self._get_digest(alias)
+        if file_dgst != alias_dgst:
+            raise DXFDigestMismatchError(file_dgst, alias_dgst)
 
     def list_aliases(self):
         with _updater_dxf_lock:

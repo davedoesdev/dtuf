@@ -14,6 +14,7 @@
 #                                      pull metadata from remote and print
 #                                      updated aliases
 # dtuf pull-blob <repo> @alias...      download blobs to stdout
+# dtuf check-blob <repo> <file> @alias check file is latest blob for alias
 # dtuf list-aliases <repo>             list all aliases in a repo
 # dtuf list-repos                      list all repos (may not all be TUF)
 
@@ -49,6 +50,7 @@ choices=['auth',
          'push-metadata',
          'pull-metadata',
          'pull-blob',
+         'check-blob',
          'list-aliases',
          'list-repos']
 
@@ -141,6 +143,15 @@ def doit():
                 parser.error('invalid alias')
             for chunk in dtuf_obj.pull_blob(name[1:]):
                 sys.stdout.write(chunk)
+
+    elif args.op == 'check-blob':
+        if len(args.args) < 2:
+            parser.error('too few arguments')
+        if len(args.args) > 2:
+            parser.error('too many arguments')
+        if not args[1].startswith('@'):
+            parser.error('invalid alias')
+        dtuf_obj.check_blob(args[0], args[1][1:]):
 
     elif args.op == 'list-aliases':
         if len(args.args) > 0:

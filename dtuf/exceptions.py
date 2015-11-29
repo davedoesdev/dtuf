@@ -1,4 +1,4 @@
-from dxf import *
+from dxf.exceptions import *
 
 class DTufError(Exception):
     pass
