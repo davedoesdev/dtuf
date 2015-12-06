@@ -149,9 +149,9 @@ def doit():
             parser.error('too few arguments')
         if len(args.args) > 2:
             parser.error('too many arguments')
-        if not args[1].startswith('@'):
+        if not args.args[1].startswith('@'):
             parser.error('invalid alias')
-        dtuf_obj.check_blob(args[0], args[1][1:]):
+        dtuf_obj.check_blob(args.args[0], args.args[1][1:])
 
     elif args.op == 'list-aliases':
         if len(args.args) > 0:

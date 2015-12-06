@@ -3,7 +3,7 @@ import json
 from tuf.repository_tool import *
 import tuf.client.updater
 from datetime import datetime, timedelta
-from dxf import DXF
+from dxf import DXFBase, DXF, hash_file
 import tuf
 import tuf.util
 import urlparse
@@ -298,7 +298,10 @@ class DTuf(DTufBase):
                 updater.remove_obsolete_targets(self._copy_targets_dir)
                 return [t['filepath'][1:] for t in updated_targets]
             finally:
+                tuf.conf.repository_directory = None
                 _updater_dxf = None
+
+            # try consistent_snapshot=True when writing repo
 
     def _get_digest(self, alias):
         with _updater_dxf_lock:
@@ -313,6 +316,7 @@ class DTuf(DTufBase):
                 with open(path.join(self._copy_targets_dir, alias), 'rb') as f:
                     manifest = f.read()
             finally:
+                tuf.conf.repository_directory = None
                 _updater_dxf = None
         dgsts = self._dxf.get_alias(manifest=manifest, verify=False)
         assert len(dgsts) == 1
@@ -323,7 +327,7 @@ class DTuf(DTufBase):
             yield chunk
 
     def check_blob(self, filename, alias):
-        file_dgst = dxf.hash_file(filename)
+        file_dgst = hash_file(filename)
         alias_dgst = self._get_digest(alias)
         if file_dgst != alias_dgst:
             raise DXFDigestMismatchError(file_dgst, alias_dgst)
@@ -338,4 +342,5 @@ class DTuf(DTufBase):
                                                      self._repository_mirrors)
                 return [t['filepath'][1:] for t in updater.all_targets()]
             finally:
+                tuf.conf.repository_directory = None
                 _updater_dxf = None
