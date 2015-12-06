@@ -66,7 +66,9 @@ class DTufBase(object):
         return self._dxf.list_repos()
 
 class DTuf(DTufBase):
-    def __init__(self, host, repo, repos_root=None, auth=None, insecure=False):
+    def __init__(self, host, repo, repos_root=None, auth=None, insecure=False,
+                 _targets_lifetime=None, _snapshot_lifetime=None,
+                 _timestamp_lifetime=None):
         self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure)
         self._repo_root = path.join(repos_root if repos_root else getcwd(), repo)
         self._master_dir = path.join(self._repo_root, 'master')
@@ -89,6 +91,12 @@ class DTuf(DTufBase):
                 'confined_target_dirs': ['']
             }
         }
+        self._targets_lifetime = timedelta(seconds=TARGETS_EXPIRATION) \
+            if _targets_lifetime is None else _targets_lifetime
+        self._snapshot_lifetime = timedelta(seconds=SNAPSHOT_EXPIRATION) \
+            if _snapshot_lifetime is None else _snapshot_lifetime
+        self._timestamp_lifetime = timedelta(seconds=TIMESTAMP_EXPIRATION) \
+            if _timestamp_lifetime is None else _timestamp_lifetime
 
     def create_root_key(self, password=None):
         if password is None:
@@ -196,12 +204,9 @@ class DTuf(DTufBase):
                                             self._master_targets_dir))
 
         # Update expirations
-        repository.targets.expiration = datetime.now() + \
-                                        timedelta(seconds=TARGETS_EXPIRATION)
-        repository.snapshot.expiration = datetime.now() + \
-                                         timedelta(seconds=SNAPSHOT_EXPIRATION)
-        repository.timestamp.expiration = datetime.now() + \
-                                          timedelta(seconds=TIMESTAMP_EXPIRATION)
+        repository.targets.expiration = datetime.now() + self._targets_lifetime
+        repository.snapshot.expiration = datetime.now() + self._snapshot_lifetime
+        repository.timestamp.expiration = datetime.now() + self._timestamp_lifetime
 
         # Load targets key
         if targets_key_password is None:
