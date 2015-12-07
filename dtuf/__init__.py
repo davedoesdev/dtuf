@@ -10,10 +10,11 @@ import urlparse
 import threading
 from .exceptions import *
 
-_metadata_files = ['root.json',
-                   'targets.json',
-                   'snapshot.json',
-                   'timestamp.json']
+def _is_metadata_file(alias):
+    return alias.endswith('root.json') or \
+           alias.endswith('targets.json') or \
+           alias.endswith('snapshot.json') or \
+           alias.endswith('timestamp.json')
 
 _updater_dxf_lock = threading.Lock()
 _updater_dxf = None # tuf has global config :-(
@@ -22,27 +23,28 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
     _, alias = urlparse.urlparse(url).path.split('//')
     temp_file = tuf.util.TempFile()
     try:
-        if alias in _metadata_files:
+        if _is_metadata_file(alias):
             dgst = _updater_dxf.get_alias(alias)[0]
-            n = 0
-            for chunk in _updater_dxf.pull_blob(dgst):
-                temp_file.write(chunk)
-                n += len(chunk)
-                if STRICT_REQUIRED_LENGTH and (n > required_length):
-                    break
         else:
-            manifest = _updater_dxf.get_alias(alias,
-                                              return_unsigned_manifest=True)
-            temp_file.write(manifest)
-            n = len(manifest)
+            dgst = alias[0:alias.find('.')]
+        n = 0
+        for chunk in _updater_dxf.pull_blob(dgst):
+            temp_file.write(chunk)
+            n += len(chunk)
+            if STRICT_REQUIRED_LENGTH and (n > required_length):
+                break
+        tuf.download._check_downloaded_length(
+                n, required_length, STRICT_REQUIRED_LENGTH=STRICT_REQUIRED_LENGTH)
+        return temp_file
     except:
         temp_file.close_temp_file()
         raise
-    tuf.download._check_downloaded_length(
-            n, required_length, STRICT_REQUIRED_LENGTH=STRICT_REQUIRED_LENGTH)
-    return temp_file
 
 tuf.download._download_file = _download_file
+
+def _strip_consistent_target_digest(filename):
+    dirname, basename = os.path.split(filename)
+    return os.path.join(dirname, basename[basename.find('.') + 1:])
 
 class DTufBase(object):
     def _wrap_auth(self, auth=None):
@@ -173,23 +175,30 @@ class DTuf(DTufBase):
         repository.timestamp.load_signing_key(private_timestamp_key)
 
         # Create metadata
-        repository.write()
+        repository.write(consistent_snapshot=True)
 
     def push_blob(self, filename_or_alias, alias):
-        if alias in _metadata_files:
+        if _is_metadata_file(alias):
             raise DTufReservedAliasError(alias)
         if filename_or_alias.startswith('@'):
-            dgst = self._dxf.get_alias(filename_or_alias[1:])[0]
+            dgst = self._get_digest(filename_or_alias[1:])
         else:
             dgst = self._dxf.push_blob(filename_or_alias)
-        manifest = self._dxf.set_alias(alias, dgst, return_unsigned_manifest=True)
-        with open(path.join(self._master_targets_dir, alias), 'wb') as f:
+        manifest = self._dxf.make_unsigned_manifest(alias, dgst)
+        manifest_filename = path.join(self._master_targets_dir, alias)
+        with open(manifest_filename, 'wb') as f:
             f.write(manifest)
+        self._dxf.push_blob(manifest_filename)
 
     def del_blob(self, alias):
-        remove(path.join(self._master_targets_dir, alias))
-        for dgst in self._dxf.del_alias(alias):
+        manifest_filename = path.join(self._master_targets_dir, alias)
+        with open(manifest_filename, 'rb') as f:
+            manifest = f.read()
+        manifest_dgst = self._dxf.hash_bytes(manifest)
+        remove(manifest_filename)
+        for dgst in self._dxf.get_alias(manifest=manifest, verify=False):
             self._dxf.del_blob(dgst)
+        self._dxf.del_blob(manifest_dgst)
 
     def push_metadata(self,
                       targets_key_password=None,
@@ -200,8 +209,9 @@ class DTuf(DTufBase):
 
         # Update targets
         repository.targets.clear_targets()
-        repository.targets.add_targets(repository.get_filepaths_in_directory(
-                                            self._master_targets_dir))
+        repository.targets.add_targets([
+            _strip_consistent_target_digest(f)
+            for f in repository.get_filepaths_in_directory(self._master_targets_dir)])
 
         # Update expirations
         repository.targets.expiration = datetime.now() + self._targets_lifetime
@@ -232,11 +242,23 @@ class DTuf(DTufBase):
                                     timestamp_key_password)
         repository.timestamp.load_signing_key(private_timestamp_key)
 
+        # Get files in metadata directory
+        old_files = dict([(f, True) for f in os.listdir(self._master_staged_dir)])
+
         # Update metadata
-        repository.write()
+        repository.write(consistent_snapshot=True)
+
+        # Work out which files have been added
+        new_files = [f for f in os.listdir(self._master_staged_dir) if f not in old_files]
+
+        # root.json and timestamp.json versions without hash prefix
+        if 'root.json' not in new_files:
+            new_files.append('root.json')
+        if 'timestamp.json' not in new_files:
+            new_files.append('timestamp.json')
 
         # Upload metadata
-        for f in _metadata_files:
+        for f in new_files:
             dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f))
             self._dxf.set_alias(f, dgst)
 
@@ -300,8 +322,6 @@ class DTuf(DTufBase):
             finally:
                 tuf.conf.repository_directory = None
                 _updater_dxf = None
-
-            # try consistent_snapshot=True when writing repo
 
     def _get_digest(self, alias):
         with _updater_dxf_lock:
