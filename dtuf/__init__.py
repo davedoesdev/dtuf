@@ -1,14 +1,23 @@
-from os import path, getcwd, remove, makedirs
 import json
-from tuf.repository_tool import *
-import tuf.client.updater
-from datetime import datetime, timedelta
-from dxf import DXFBase, DXF, hash_file
-import tuf
-import tuf.util
 import urlparse
 import threading
-from .exceptions import *
+from os import path, getcwd, remove, makedirs, listdir
+from datetime import datetime, timedelta
+from tuf.repository_tool import ROOT_EXPIRATION,                 \
+                                TARGETS_EXPIRATION,              \
+                                SNAPSHOT_EXPIRATION,             \
+                                TIMESTAMP_EXPIRATION,            \
+                                generate_and_write_rsa_keypair,  \
+                                import_rsa_publickey_from_file,  \
+                                import_rsa_privatekey_from_file, \
+                                create_new_repository,           \
+                                load_repository
+import tuf.client.updater
+import tuf
+import tuf.util
+from dxf import DXFBase, DXF, hash_file, hash_bytes
+import dxf.exceptions
+from dtuf import exceptions
 
 def _is_metadata_file(alias):
     return alias.endswith('root.json') or \
@@ -33,18 +42,20 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
             n += len(chunk)
             if STRICT_REQUIRED_LENGTH and (n > required_length):
                 break
+        # pylint: disable=protected-access
         tuf.download._check_downloaded_length(
-                n, required_length, STRICT_REQUIRED_LENGTH=STRICT_REQUIRED_LENGTH)
+            n, required_length, STRICT_REQUIRED_LENGTH=STRICT_REQUIRED_LENGTH)
         return temp_file
     except:
         temp_file.close_temp_file()
         raise
 
+# pylint: disable=protected-access
 tuf.download._download_file = _download_file
 
 def _strip_consistent_target_digest(filename):
-    dirname, basename = os.path.split(filename)
-    return os.path.join(dirname, basename[basename.find('.') + 1:])
+    dirname, basename = path.split(filename)
+    return path.join(dirname, basename[basename.find('.') + 1:])
 
 class DTufBase(object):
     def _wrap_auth(self, auth=None):
@@ -61,16 +72,18 @@ class DTufBase(object):
     def token(self, value):
         self._dxf.token = value
 
-    def auth_by_password(self, username, password, actions=[], response=None):
+    def auth_by_password(self, username, password, actions=None, response=None):
         return self._dxf.auth_by_password(username, password, actions, response)
 
     def list_repos(self):
         return self._dxf.list_repos()
 
+# pylint: disable=too-many-instance-attributes
 class DTuf(DTufBase):
+    # pylint: disable=too-many-arguments,super-init-not-called
     def __init__(self, host, repo, repos_root=None, auth=None, insecure=False,
-                 _targets_lifetime=None, _snapshot_lifetime=None,
-                 _timestamp_lifetime=None):
+                 root_lifetime=None, targets_lifetime=None,
+                 snapshot_lifetime=None, timestamp_lifetime=None):
         self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure)
         self._repo_root = path.join(repos_root if repos_root else getcwd(), repo)
         self._master_dir = path.join(self._repo_root, 'master')
@@ -93,12 +106,14 @@ class DTuf(DTufBase):
                 'confined_target_dirs': ['']
             }
         }
+        self._root_lifetime = timedelta(seconds=ROOT_EXPIRATION) \
+            if root_lifetime is None else root_lifetime
         self._targets_lifetime = timedelta(seconds=TARGETS_EXPIRATION) \
-            if _targets_lifetime is None else _targets_lifetime
+            if targets_lifetime is None else targets_lifetime
         self._snapshot_lifetime = timedelta(seconds=SNAPSHOT_EXPIRATION) \
-            if _snapshot_lifetime is None else _snapshot_lifetime
+            if snapshot_lifetime is None else snapshot_lifetime
         self._timestamp_lifetime = timedelta(seconds=TIMESTAMP_EXPIRATION) \
-            if _timestamp_lifetime is None else _timestamp_lifetime
+            if timestamp_lifetime is None else timestamp_lifetime
 
     def create_root_key(self, password=None):
         if password is None:
@@ -129,48 +144,49 @@ class DTuf(DTufBase):
                         timestamp_key_password=None):
         # Import root key
         public_root_key = import_rsa_publickey_from_file(
-                                    self._root_key_file + '.pub')
+            self._root_key_file + '.pub')
         if root_key_password is None:
             print 'importing root key...'
         private_root_key = import_rsa_privatekey_from_file(
-                                    self._root_key_file,
-                                    root_key_password)
+            self._root_key_file,
+            root_key_password)
 
         # Create repository object and load root key
         repository = create_new_repository(self._master_repo_dir)
         repository.root.add_verification_key(public_root_key)
         repository.root.load_signing_key(private_root_key)
-                
+        repository.root.expiration = datetime.now() + self._root_lifetime
+
         # Add targets key to repository
         public_targets_key = import_rsa_publickey_from_file(
-                                    self._targets_key_file + '.pub')
+            self._targets_key_file + '.pub')
         if targets_key_password is None:
             print 'importing targets key...'
         private_targets_key = import_rsa_privatekey_from_file(
-                                    self._targets_key_file,
-                                    targets_key_password)
+            self._targets_key_file,
+            targets_key_password)
         repository.targets.add_verification_key(public_targets_key)
         repository.targets.load_signing_key(private_targets_key)
 
         # Add snapshot key to repository
         public_snapshot_key = import_rsa_publickey_from_file(
-                                    self._snapshot_key_file + '.pub')
+            self._snapshot_key_file + '.pub')
         if snapshot_key_password is None:
             print 'importing snapshot key...'
         private_snapshot_key = import_rsa_privatekey_from_file(
-                                    self._snapshot_key_file,
-                                    snapshot_key_password)
+            self._snapshot_key_file,
+            snapshot_key_password)
         repository.snapshot.add_verification_key(public_snapshot_key)
         repository.snapshot.load_signing_key(private_snapshot_key)
 
         # Add timestamp key to repository
         public_timestamp_key = import_rsa_publickey_from_file(
-                                    self._timestamp_key_file + '.pub')
+            self._timestamp_key_file + '.pub')
         if timestamp_key_password is None:
             print 'importing timestamp key...'
         private_timestamp_key = import_rsa_privatekey_from_file(
-                                    self._timestamp_key_file,
-                                    timestamp_key_password)
+            self._timestamp_key_file,
+            timestamp_key_password)
         repository.timestamp.add_verification_key(public_timestamp_key)
         repository.timestamp.load_signing_key(private_timestamp_key)
 
@@ -179,7 +195,7 @@ class DTuf(DTufBase):
 
     def push_blob(self, filename_or_alias, alias):
         if _is_metadata_file(alias):
-            raise DTufReservedAliasError(alias)
+            raise exceptions.DTufReservedAliasError(alias)
         if filename_or_alias.startswith('@'):
             dgst = self._get_digest(filename_or_alias[1:])
         else:
@@ -194,7 +210,7 @@ class DTuf(DTufBase):
         manifest_filename = path.join(self._master_targets_dir, alias)
         with open(manifest_filename, 'rb') as f:
             manifest = f.read()
-        manifest_dgst = self._dxf.hash_bytes(manifest)
+        manifest_dgst = hash_bytes(manifest)
         remove(manifest_filename)
         for dgst in self._dxf.get_alias(manifest=manifest, verify=False):
             self._dxf.del_blob(dgst)
@@ -206,6 +222,7 @@ class DTuf(DTufBase):
                       timestamp_key_password=None):
         # Load repository object
         repository = load_repository(self._master_repo_dir)
+        #  pylint: disable=no-member
 
         # Update targets
         repository.targets.clear_targets()
@@ -222,34 +239,34 @@ class DTuf(DTufBase):
         if targets_key_password is None:
             print 'importing targets key...'
         private_targets_key = import_rsa_privatekey_from_file(
-                                    self._targets_key_file,
-                                    targets_key_password)
+            self._targets_key_file,
+            targets_key_password)
         repository.targets.load_signing_key(private_targets_key)
 
         # Load snapshot key
         if snapshot_key_password is None:
             print 'importing snapshot key...'
         private_snapshot_key = import_rsa_privatekey_from_file(
-                                    self._snapshot_key_file,
-                                    snapshot_key_password)
+            self._snapshot_key_file,
+            snapshot_key_password)
         repository.snapshot.load_signing_key(private_snapshot_key)
 
         # Load timestamp key
         if timestamp_key_password is None:
             print 'importing timestamp key...'
         private_timestamp_key = import_rsa_privatekey_from_file(
-                                    self._timestamp_key_file,
-                                    timestamp_key_password)
+            self._timestamp_key_file,
+            timestamp_key_password)
         repository.timestamp.load_signing_key(private_timestamp_key)
 
         # Get files in metadata directory
-        old_files = dict([(f, True) for f in os.listdir(self._master_staged_dir)])
+        old_files = dict([(f, True) for f in listdir(self._master_staged_dir)])
 
         # Update metadata
         repository.write(consistent_snapshot=True)
 
         # Work out which files have been added
-        new_files = [f for f in os.listdir(self._master_staged_dir) if f not in old_files]
+        new_files = [f for f in listdir(self._master_staged_dir) if f not in old_files]
 
         # root.json and timestamp.json versions without hash prefix
         if 'root.json' not in new_files:
@@ -268,6 +285,7 @@ class DTuf(DTufBase):
                 try:
                     makedirs(path.join(self._copy_repo_dir, 'metadata', d))
                 except OSError as exception:
+                    import errno
                     if exception.errno != errno.EEXIST:
                         raise
             # If root public key was passed, we shouldn't rely on the current
@@ -283,7 +301,7 @@ class DTuf(DTufBase):
                     metadata_signable = json.loads(metadata)
                     tuf.formats.check_signable_object_format(metadata_signable)
                     tuf.client.updater.Updater._ensure_not_expired.__func__(
-                            None, metadata_signable['signed'], 'root')
+                        None, metadata_signable['signed'], 'root')
                     # This metadata is claiming to be root.json
                     # Get the keyid of the signature and use it to add the root
                     # public key to the keydb. Thus when we verify the signature
@@ -308,6 +326,7 @@ class DTuf(DTufBase):
                     temp_file.close_temp_file()
                     raise
             tuf.conf.repository_directory = self._copy_repo_dir
+            # pylint: disable=global-statement
             global _updater_dxf
             _updater_dxf = self._dxf
             try:
@@ -316,7 +335,7 @@ class DTuf(DTufBase):
                 updater.refresh(False)
                 targets = updater.all_targets()
                 updated_targets = updater.updated_targets(
-                                        targets, self._copy_targets_dir)
+                    targets, self._copy_targets_dir)
                 updater.remove_obsolete_targets(self._copy_targets_dir)
                 return [t['filepath'][1:] for t in updated_targets]
             finally:
@@ -326,6 +345,7 @@ class DTuf(DTufBase):
     def _get_digest(self, alias):
         with _updater_dxf_lock:
             tuf.conf.repository_directory = self._copy_repo_dir
+            # pylint: disable=global-statement
             global _updater_dxf
             _updater_dxf = self._dxf
             try:
@@ -350,11 +370,12 @@ class DTuf(DTufBase):
         file_dgst = hash_file(filename)
         alias_dgst = self._get_digest(alias)
         if file_dgst != alias_dgst:
-            raise DXFDigestMismatchError(file_dgst, alias_dgst)
+            raise dxf.exceptions.DXFDigestMismatchError(file_dgst, alias_dgst)
 
     def list_aliases(self):
         with _updater_dxf_lock:
             tuf.conf.repository_directory = self._copy_repo_dir
+            # pylint: disable=global-statement
             global _updater_dxf
             _updater_dxf = self._dxf
             try:

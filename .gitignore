@@ -1,4 +1,5 @@
 /tuf.log
 /setenv.sh
 /repos
+/dxf
 *.pyc

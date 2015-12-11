@@ -29,30 +29,32 @@
 # pass repositories directory through DTUF_REPOSITORIES_ROOT
 # (have repo subdirs underneath and then master and copy subdirs under those)
 
+# pylint: disable=wrong-import-position,wrong-import-order
 import os
 import sys
 import argparse
 import dtuf
-import dtuf.exceptions
+import dxf.exceptions
 
+# pylint: disable=redefined-outer-name
 def auth(dtuf_obj, response):
     username = os.environ.get('DTUF_USERNAME')
     password = os.environ.get('DTUF_PASSWORD')
     if username and password:
         dtuf_obj.auth_by_password(username, password, response=response)
 
-choices=['auth',
-         'create-root-key',
-         'create-metadata-keys',
-         'create-metadata',
-         'push-blob',
-         'del-blob',
-         'push-metadata',
-         'pull-metadata',
-         'pull-blob',
-         'check-blob',
-         'list-aliases',
-         'list-repos']
+choices = ['auth',
+           'create-root-key',
+           'create-metadata-keys',
+           'create-metadata',
+           'push-blob',
+           'del-blob',
+           'push-metadata',
+           'pull-metadata',
+           'pull-blob',
+           'check-blob',
+           'list-aliases',
+           'list-repos']
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='op')
@@ -62,18 +64,20 @@ for c in choices:
         sp.add_argument('repo')
         sp.add_argument('args', nargs='*')
 
+# pylint: disable=redefined-variable-type
 args = parser.parse_args()
-if args.op == 'list-repos':
-    dtuf_obj = dtuf.DTufBase(os.environ['DTUF_HOST'],
-                             auth,
-                             os.environ.get('DTUF_INSECURE'))
-else:
+if args.op != 'list-repos':
     dtuf_obj = dtuf.DTuf(os.environ['DTUF_HOST'],
                          args.repo,
                          os.environ.get('DTUF_REPOSITORIES_ROOT'),
                          auth,
                          os.environ.get('DTUF_INSECURE'))
+else:
+    dtuf_obj = dtuf.DTufBase(os.environ['DTUF_HOST'],
+                             auth,
+                             os.environ.get('DTUF_INSECURE'))
 
+# pylint: disable=too-many-branches,too-many-statements
 def doit():
     if args.op == 'auth':
         print dtuf_obj.auth_by_password(os.environ['DTUF_USERNAME'],
@@ -165,7 +169,7 @@ def doit():
 
 try:
     doit()
-except dtuf.exceptions.DXFUnauthorizedError:
+except dxf.exceptions.DXFUnauthorizedError:
     import traceback
     traceback.print_exc()
     import errno
