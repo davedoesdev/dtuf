@@ -1,5 +1,12 @@
+# pylint: disable=superfluous-parens, wrong-import-order
+
+try:
+    import urllib.parse as urlparse
+except ImportError:
+    # pylint: disable=import-error
+    import urlparse
+
 import json
-import urlparse
 import threading
 from os import path, getcwd, remove, makedirs, listdir
 from datetime import datetime, timedelta
@@ -117,7 +124,7 @@ class DTuf(DTufBase):
 
     def create_root_key(self, password=None):
         if password is None:
-            print 'generating root key...'
+            print('generating root key...')
         generate_and_write_rsa_keypair(self._root_key_file, password=password)
 
     def create_metadata_keys(self,
@@ -125,15 +132,15 @@ class DTuf(DTufBase):
                              snapshot_key_password=None,
                              timestamp_key_password=None):
         if targets_key_password is None:
-            print 'generating targets key...'
+            print('generating targets key...')
         generate_and_write_rsa_keypair(self._targets_key_file,
                                        password=targets_key_password)
         if snapshot_key_password is None:
-            print 'generating snapshot key...'
+            print('generating snapshot key...')
         generate_and_write_rsa_keypair(self._snapshot_key_file,
                                        password=snapshot_key_password)
         if timestamp_key_password is None:
-            print 'generating timestamp key...'
+            print('generating timestamp key...')
         generate_and_write_rsa_keypair(self._timestamp_key_file,
                                        password=timestamp_key_password)
 
@@ -146,7 +153,7 @@ class DTuf(DTufBase):
         public_root_key = import_rsa_publickey_from_file(
             self._root_key_file + '.pub')
         if root_key_password is None:
-            print 'importing root key...'
+            print('importing root key...')
         private_root_key = import_rsa_privatekey_from_file(
             self._root_key_file,
             root_key_password)
@@ -161,7 +168,7 @@ class DTuf(DTufBase):
         public_targets_key = import_rsa_publickey_from_file(
             self._targets_key_file + '.pub')
         if targets_key_password is None:
-            print 'importing targets key...'
+            print('importing targets key...')
         private_targets_key = import_rsa_privatekey_from_file(
             self._targets_key_file,
             targets_key_password)
@@ -172,7 +179,7 @@ class DTuf(DTufBase):
         public_snapshot_key = import_rsa_publickey_from_file(
             self._snapshot_key_file + '.pub')
         if snapshot_key_password is None:
-            print 'importing snapshot key...'
+            print('importing snapshot key...')
         private_snapshot_key = import_rsa_privatekey_from_file(
             self._snapshot_key_file,
             snapshot_key_password)
@@ -183,7 +190,7 @@ class DTuf(DTufBase):
         public_timestamp_key = import_rsa_publickey_from_file(
             self._timestamp_key_file + '.pub')
         if timestamp_key_password is None:
-            print 'importing timestamp key...'
+            print('importing timestamp key...')
         private_timestamp_key = import_rsa_privatekey_from_file(
             self._timestamp_key_file,
             timestamp_key_password)
@@ -237,7 +244,7 @@ class DTuf(DTufBase):
 
         # Load targets key
         if targets_key_password is None:
-            print 'importing targets key...'
+            print('importing targets key...')
         private_targets_key = import_rsa_privatekey_from_file(
             self._targets_key_file,
             targets_key_password)
@@ -245,7 +252,7 @@ class DTuf(DTufBase):
 
         # Load snapshot key
         if snapshot_key_password is None:
-            print 'importing snapshot key...'
+            print('importing snapshot key...')
         private_snapshot_key = import_rsa_privatekey_from_file(
             self._snapshot_key_file,
             snapshot_key_password)
@@ -253,7 +260,7 @@ class DTuf(DTufBase):
 
         # Load timestamp key
         if timestamp_key_password is None:
-            print 'importing timestamp key...'
+            print('importing timestamp key...')
         private_timestamp_key = import_rsa_privatekey_from_file(
             self._timestamp_key_file,
             timestamp_key_password)
@@ -365,6 +372,9 @@ class DTuf(DTufBase):
     def pull_blob(self, alias):
         for chunk in self._dxf.pull_blob(self._get_digest(alias)):
             yield chunk
+
+    def blob_size(self, alias):
+        return self._dxf.blob_size(self._get_digest(alias))
 
     def check_blob(self, filename, alias):
         file_dgst = hash_file(filename)

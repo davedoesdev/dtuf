@@ -14,6 +14,7 @@
 #                                      pull metadata from remote and print
 #                                      updated aliases
 # dtuf pull-blob <repo> @alias...      download blobs to stdout
+# dtuf blob-size <repo> @alias...      print sizes of blobs
 # dtuf check-blob <repo> <file> @alias check file is latest blob for alias
 # dtuf list-aliases <repo>             list all aliases in a repo
 # dtuf list-repos                      list all repos (may not all be TUF)
@@ -29,7 +30,7 @@
 # pass repositories directory through DTUF_REPOSITORIES_ROOT
 # (have repo subdirs underneath and then master and copy subdirs under those)
 
-# pylint: disable=wrong-import-position,wrong-import-order
+# pylint: disable=wrong-import-position,wrong-import-order,superfluous-parens
 import os
 import sys
 import argparse
@@ -52,6 +53,7 @@ choices = ['auth',
            'push-metadata',
            'pull-metadata',
            'pull-blob',
+           'blob-size',
            'check-blob',
            'list-aliases',
            'list-repos']
@@ -80,9 +82,9 @@ else:
 # pylint: disable=too-many-branches,too-many-statements
 def doit():
     if args.op == 'auth':
-        print dtuf_obj.auth_by_password(os.environ['DTUF_USERNAME'],
+        print(dtuf_obj.auth_by_password(os.environ['DTUF_USERNAME'],
                                         os.environ['DTUF_PASSWORD'],
-                                        actions=args.args)
+                                        actions=args.args))
         return
 
     token = os.environ.get('DTUF_TOKEN')
@@ -139,7 +141,7 @@ def doit():
             with open(args.args[0], 'rb') as f:
                 root_public_key = f.read()
         for name in dtuf_obj.pull_metadata(root_public_key):
-            print name
+            print(name)
 
     elif args.op == 'pull-blob':
         for name in args.args:
@@ -147,6 +149,12 @@ def doit():
                 parser.error('invalid alias')
             for chunk in dtuf_obj.pull_blob(name[1:]):
                 sys.stdout.write(chunk)
+
+    elif args.op == 'blob-size':
+        for name in args.args:
+            if not name.startswith('@'):
+                parser.error('invalid alias')
+            print(dtuf_obj.blob_size(name[1:]))
 
     elif args.op == 'check-blob':
         if len(args.args) < 2:
@@ -161,11 +169,11 @@ def doit():
         if len(args.args) > 0:
             parser.error('too many arguments')
         for name in dtuf_obj.list_aliases():
-            print name
+            print(name)
 
     elif args.op == 'list-repos':
         for name in dtuf_obj.list_repos():
-            print name
+            print(name)
 
 try:
     doit()

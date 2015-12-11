@@ -2,4 +2,5 @@
 /setenv.sh
 /repos
 /dxf
+/python
 *.pyc
