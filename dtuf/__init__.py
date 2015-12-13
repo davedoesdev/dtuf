@@ -349,7 +349,7 @@ class DTuf(DTufBase):
                 tuf.conf.repository_directory = None
                 _updater_dxf = None
 
-    def _get_digest(self, alias):
+    def _get_digest(self, alias, size=False):
         with _updater_dxf_lock:
             tuf.conf.repository_directory = self._copy_repo_dir
             # pylint: disable=global-statement
@@ -365,16 +365,16 @@ class DTuf(DTufBase):
             finally:
                 tuf.conf.repository_directory = None
                 _updater_dxf = None
-        dgsts = self._dxf.get_alias(manifest=manifest, verify=False)
+        dgsts = self._dxf.get_alias(manifest=manifest, verify=False, sizes=size)
         assert len(dgsts) == 1
         return dgsts[0]
 
-    def pull_blob(self, alias):
-        for chunk in self._dxf.pull_blob(self._get_digest(alias)):
-            yield chunk
+    def pull_blob(self, alias, size=False):
+        return self._dxf.pull_blob(self._get_digest(alias), size=True)
 
     def blob_size(self, alias):
-        return self._dxf.blob_size(self._get_digest(alias))
+        _, size = self._get_digest(alias, size=True)
+        return size
 
     def check_blob(self, filename, alias):
         file_dgst = hash_file(filename)
