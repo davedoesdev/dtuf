@@ -34,6 +34,7 @@
 import os
 import sys
 import argparse
+from tqdm import tqdm
 import dtuf
 import dxf.exceptions
 
@@ -147,8 +148,17 @@ def doit():
         for name in args.args:
             if not name.startswith('@'):
                 parser.error('invalid alias')
-            for chunk in dtuf_obj.pull_blob(name[1:]):
+            size, it = dtuf_obj.pull_blob(name[1:])
+            if os.environ.get('DTUF_PROGRESS') == '1':
+                progress = tqdm(desc=name, total=size, leave=True)
+            else:
+                progress = None
+            for chunk in
+                if progress is not None:
+                    progress.update(len(chunk))
                 sys.stdout.write(chunk)
+            if progress is not None:
+                progress.close()
 
     elif args.op == 'blob-size':
         for name in args.args:
