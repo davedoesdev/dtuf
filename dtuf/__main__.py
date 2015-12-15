@@ -9,6 +9,7 @@
 # dtuf push-blob <repo> @alias @alias2 set alias to blob already uploaded
 # dtuf del-blob <repo> @alias...       delete blobs
 # dtuf push-metadata <repo>            update metadata and push it to remote
+# dtuf list-master-aliases <repo>      list all aliases in a repo
 
 # dtuf pull-metadata <repo> [<root-pubkey-file>]
 #                                      pull metadata from remote and print
@@ -16,7 +17,7 @@
 # dtuf pull-blob <repo> @alias...      download blobs to stdout
 # dtuf blob-size <repo> @alias...      print sizes of blobs
 # dtuf check-blob <repo> <file> @alias check file is latest blob for alias
-# dtuf list-aliases <repo>             list all aliases in a repo
+# dtuf list-copy-aliases <repo>        list all aliases in a repo
 # dtuf list-repos                      list all repos (may not all be TUF)
 
 # pass private key password through DTUF_ROOT_KEY_PASSWORD,
@@ -45,19 +46,20 @@ def auth(dtuf_obj, response):
     if username and password:
         dtuf_obj.auth_by_password(username, password, response=response)
 
-choices = ['auth',
+choices = ['list-repos',
+           'auth',
            'create-root-key',
            'create-metadata-keys',
            'create-metadata',
            'push-blob',
            'del-blob',
            'push-metadata',
+           'list-master-aliases',
            'pull-metadata',
            'pull-blob',
            'blob-size',
            'check-blob',
-           'list-aliases',
-           'list-repos']
+           'list-copy-aliases']
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='op')
@@ -69,23 +71,39 @@ for c in choices:
 
 # pylint: disable=redefined-variable-type
 args = parser.parse_args()
-if args.op != 'list-repos':
-    dtuf_obj = dtuf.DTuf(os.environ['DTUF_HOST'],
-                         args.repo,
-                         os.environ.get('DTUF_REPOSITORIES_ROOT'),
-                         auth,
-                         os.environ.get('DTUF_INSECURE'))
+if args.op == 'list-repos':
+    dtuf_base = dtuf.DTufBase(os.environ['DTUF_HOST'],
+                              auth,
+                              os.environ.get('DTUF_INSECURE'))
+    dtuf_obj = dtuf_base
+elif args.op in ['auth',
+                 'create-root-key',
+                 'create-metadata-keys',
+                 'create-metadata',
+                 'push-blob',
+                 'del-blob',
+                 'push-metadata',
+                 'list-master-aliases']:
+    dtuf_master = dtuf.DTufMaster(os.environ['DTUF_HOST'],
+                                  args.repo,
+                                  os.environ.get('DTUF_REPOSITORIES_ROOT'),
+                                  auth,
+                                  os.environ.get('DTUF_INSECURE'))
+    dtuf_obj = dtuf_master
 else:
-    dtuf_obj = dtuf.DTufBase(os.environ['DTUF_HOST'],
-                             auth,
-                             os.environ.get('DTUF_INSECURE'))
+    dtuf_copy = dtuf.DTufCopy(os.environ['DTUF_HOST'],
+                              args.repo,
+                              os.environ.get('DTUF_REPOSITORIES_ROOT'),
+                              auth,
+                              os.environ.get('DTUF_INSECURE'))
+    dtuf_obj = dtuf_copy
 
 # pylint: disable=too-many-branches,too-many-statements
 def doit():
     if args.op == 'auth':
-        print(dtuf_obj.auth_by_password(os.environ['DTUF_USERNAME'],
-                                        os.environ['DTUF_PASSWORD'],
-                                        actions=args.args))
+        print(dtuf_master.auth_by_password(os.environ['DTUF_USERNAME'],
+                                           os.environ['DTUF_PASSWORD'],
+                                           actions=args.args))
         return
 
     token = os.environ.get('DTUF_TOKEN')
@@ -95,22 +113,22 @@ def doit():
     if args.op == 'create-root-key':
         if len(args.args) > 0:
             parser.error('too many arguments')
-        dtuf_obj.create_root_key(os.environ.get('DTUF_ROOT_KEY_PASSWORD'))
+        dtuf_master.create_root_key(os.environ.get('DTUF_ROOT_KEY_PASSWORD'))
 
     elif args.op == 'create-metadata-keys':
         if len(args.args) > 0:
             parser.error('too many arguments')
-        dtuf_obj.create_metadata_keys(os.environ.get('DTUF_TARGETS_KEY_PASSWORD'),
-                                      os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
-                                      os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
+        dtuf_master.create_metadata_keys(os.environ.get('DTUF_TARGETS_KEY_PASSWORD'),
+                                         os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
+                                         os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
 
     elif args.op == 'create-metadata':
         if len(args.args) > 0:
             parser.error('too many arguments')
-        dtuf_obj.create_metadata(os.environ.get('DTUF_ROOT_KEY_PASSWORD'),
-                                 os.environ.get('DTUF_TARGETS_KEY_PASSWORD'),
-                                 os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
-                                 os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
+        dtuf_master.create_metadata(os.environ.get('DTUF_ROOT_KEY_PASSWORD'),
+                                    os.environ.get('DTUF_TARGETS_KEY_PASSWORD'),
+                                    os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
+                                    os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
 
     elif args.op == 'push-blob':
         if len(args.args) < 2:
@@ -119,20 +137,26 @@ def doit():
             parser.error('too many arguments')
         if not args.args[1].startswith('@'):
             parser.error('invalid alias')
-        dtuf_obj.push_blob(args.args[0], args.args[1][1:])
+        dtuf_master.push_blob(args.args[0], args.args[1][1:])
 
     elif args.op == 'del-blob':
         for name in args.args:
             if not name.startswith('@'):
                 parser.error('invalid alias')
-            dtuf_obj.del_blob(name[1:])
+            dtuf_master.del_blob(name[1:])
 
     elif args.op == 'push-metadata':
         if len(args.args) > 0:
             parser.error('too many arguments')
-        dtuf_obj.push_metadata(os.environ.get('DTUF_TARGETS_KEY_PASSWORD'),
-                               os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
-                               os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
+        dtuf_master.push_metadata(os.environ.get('DTUF_TARGETS_KEY_PASSWORD'),
+                                  os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
+                                  os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
+
+    elif args.op == 'list-master-aliases':
+        if len(args.args) > 0:
+            parser.error('too many arguments')
+        for name in dtuf_master.list_aliases():
+            print(name)
 
     elif args.op == 'pull-metadata':
         if len(args.args) > 1:
@@ -141,19 +165,19 @@ def doit():
         if len(args.args) == 1:
             with open(args.args[0], 'rb') as f:
                 root_public_key = f.read()
-        for name in dtuf_obj.pull_metadata(root_public_key):
+        for name in dtuf_copy.pull_metadata(root_public_key):
             print(name)
 
     elif args.op == 'pull-blob':
         for name in args.args:
             if not name.startswith('@'):
                 parser.error('invalid alias')
-            size, it = dtuf_obj.pull_blob(name[1:])
+            size, it = dtuf_copy.pull_blob(name[1:])
             if os.environ.get('DTUF_PROGRESS') == '1':
                 progress = tqdm(desc=name, total=size, leave=True)
             else:
                 progress = None
-            for chunk in
+            for chunk in it:
                 if progress is not None:
                     progress.update(len(chunk))
                 sys.stdout.write(chunk)
@@ -164,7 +188,7 @@ def doit():
         for name in args.args:
             if not name.startswith('@'):
                 parser.error('invalid alias')
-            print(dtuf_obj.blob_size(name[1:]))
+            print(dtuf_copy.blob_size(name[1:]))
 
     elif args.op == 'check-blob':
         if len(args.args) < 2:
@@ -173,16 +197,16 @@ def doit():
             parser.error('too many arguments')
         if not args.args[1].startswith('@'):
             parser.error('invalid alias')
-        dtuf_obj.check_blob(args.args[0], args.args[1][1:])
+        dtuf_copy.check_blob(args.args[0], args.args[1][1:])
 
-    elif args.op == 'list-aliases':
+    elif args.op == 'list-copy-aliases':
         if len(args.args) > 0:
             parser.error('too many arguments')
-        for name in dtuf_obj.list_aliases():
+        for name in dtuf_copy.list_aliases():
             print(name)
 
     elif args.op == 'list-repos':
-        for name in dtuf_obj.list_repos():
+        for name in dtuf_base.list_repos():
             print(name)
 
 try:

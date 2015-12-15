@@ -22,6 +22,10 @@ from tuf.repository_tool import ROOT_EXPIRATION,                 \
 import tuf.client.updater
 import tuf
 import tuf.util
+import tuf.keydb
+import tuf.roledb
+import tuf.conf
+import fasteners
 from dxf import DXFBase, DXF, hash_file, hash_bytes
 import dxf.exceptions
 from dtuf import exceptions
@@ -32,8 +36,43 @@ def _is_metadata_file(alias):
            alias.endswith('snapshot.json') or \
            alias.endswith('timestamp.json')
 
-_updater_dxf_lock = threading.Lock()
-_updater_dxf = None # tuf has global config :-(
+_tuf_lock = threading.Lock()
+_updater_dxf = None
+
+def _tuf_clear():
+    # pylint: disable=global-statement
+    global _updater_dxf
+    _updater_dxf = None
+    tuf.keydb.clear_keydb()
+    tuf.roledb.clear_roledb()
+    tuf.conf.repository_directory = None
+
+def _locked(lock, setup, f, self, *args, **kwargs):
+    with _tuf_lock:
+        with lock:
+            _tuf_clear()
+            try:
+                if setup:
+                    setup()
+                return f(self, *args, **kwargs)
+            finally:
+                _tuf_clear()
+
+def _master_repo_locked(f):
+    def locked(self, *args, **kwargs):
+        # pylint: disable=protected-access
+        return _locked(self._master_repo_lock, None, f, self, *args, **kwargs)
+    return locked
+
+def _copy_repo_locked(f):
+    def locked(self, args, **kwargs):
+        # pylint: disable=global-statement,protected-access
+        def setup():
+            global _updater_dxf
+            _updater_dxf = self._dxf
+            tuf.conf.repository_directory = self._copy_repo_dir
+        return _locked(self._copy_repo_lock, setup, f, self, *args, **kwargs)
+    return locked
 
 def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
     _, alias = urlparse.urlparse(url).path.split('//')
@@ -85,15 +124,22 @@ class DTufBase(object):
     def list_repos(self):
         return self._dxf.list_repos()
 
-# pylint: disable=too-many-instance-attributes
-class DTuf(DTufBase):
+class DTufCommon(DTufBase):
     # pylint: disable=too-many-arguments,super-init-not-called
+    def __init__(self, host, repo, repos_root=None, auth=None, insecure=False):
+        self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure)
+        self._repo_root = path.join(repos_root if repos_root else getcwd(), repo)
+
+# pylint: disable=too-many-instance-attributes
+class DTufMaster(DTufCommon):
+    # pylint: disable=too-many-arguments
     def __init__(self, host, repo, repos_root=None, auth=None, insecure=False,
                  root_lifetime=None, targets_lifetime=None,
                  snapshot_lifetime=None, timestamp_lifetime=None):
-        self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure)
-        self._repo_root = path.join(repos_root if repos_root else getcwd(), repo)
+        super(DTufMaster, self).__init__(host, repo, repos_root, auth, insecure)
         self._master_dir = path.join(self._repo_root, 'master')
+        self._master_repo_lock = fasteners.process_lock.InterProcessLock(
+            path.join(self._master_dir, 'lock'))
         self._keys_dir = path.join(self._master_dir, 'keys')
         self._root_key_file = path.join(self._keys_dir, 'root_key')
         self._targets_key_file = path.join(self._keys_dir, 'targets_key')
@@ -102,17 +148,6 @@ class DTuf(DTufBase):
         self._master_repo_dir = path.join(self._master_dir, 'repository')
         self._master_targets_dir = path.join(self._master_repo_dir, 'targets')
         self._master_staged_dir = path.join(self._master_repo_dir, 'metadata.staged')
-        self._copy_dir = path.join(self._repo_root, 'copy')
-        self._copy_repo_dir = path.join(self._copy_dir, 'repository')
-        self._copy_targets_dir = path.join(self._copy_repo_dir, 'targets')
-        self._repository_mirrors = {
-            'dtuf': {
-                'url_prefix': 'https://' + host + '/' + repo,
-                'metadata_path': '',
-                'targets_path': '',
-                'confined_target_dirs': ['']
-            }
-        }
         self._root_lifetime = timedelta(seconds=ROOT_EXPIRATION) \
             if root_lifetime is None else root_lifetime
         self._targets_lifetime = timedelta(seconds=TARGETS_EXPIRATION) \
@@ -122,11 +157,13 @@ class DTuf(DTufBase):
         self._timestamp_lifetime = timedelta(seconds=TIMESTAMP_EXPIRATION) \
             if timestamp_lifetime is None else timestamp_lifetime
 
+    @_master_repo_locked
     def create_root_key(self, password=None):
         if password is None:
             print('generating root key...')
         generate_and_write_rsa_keypair(self._root_key_file, password=password)
 
+    @_master_repo_locked
     def create_metadata_keys(self,
                              targets_key_password=None,
                              snapshot_key_password=None,
@@ -144,6 +181,7 @@ class DTuf(DTufBase):
         generate_and_write_rsa_keypair(self._timestamp_key_file,
                                        password=timestamp_key_password)
 
+    @_master_repo_locked
     def create_metadata(self,
                         root_key_password=None,
                         targets_key_password=None,
@@ -200,11 +238,17 @@ class DTuf(DTufBase):
         # Create metadata
         repository.write(consistent_snapshot=True)
 
+    @_master_repo_locked
     def push_blob(self, filename_or_alias, alias):
         if _is_metadata_file(alias):
             raise exceptions.DTufReservedAliasError(alias)
         if filename_or_alias.startswith('@'):
-            dgst = self._get_digest(filename_or_alias[1:])
+            with open(path.join(self._master_targets_dir,
+                                filename_or_alias[1:]), 'rb') as f:
+                manifest = f.read()
+            dgsts = self._dxf.get_alias(manifest=manifest, verify=False)
+            assert len(dgsts) == 1
+            dgst = dgsts[0]
         else:
             dgst = self._dxf.push_blob(filename_or_alias)
         manifest = self._dxf.make_unsigned_manifest(alias, dgst)
@@ -213,6 +257,7 @@ class DTuf(DTufBase):
             f.write(manifest)
         self._dxf.push_blob(manifest_filename)
 
+    @_master_repo_locked
     def del_blob(self, alias):
         manifest_filename = path.join(self._master_targets_dir, alias)
         with open(manifest_filename, 'rb') as f:
@@ -223,6 +268,7 @@ class DTuf(DTufBase):
             self._dxf.del_blob(dgst)
         self._dxf.del_blob(manifest_dgst)
 
+    @_master_repo_locked
     def push_metadata(self,
                       targets_key_password=None,
                       snapshot_key_password=None,
@@ -286,91 +332,99 @@ class DTuf(DTufBase):
             dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f))
             self._dxf.set_alias(f, dgst)
 
-    def pull_metadata(self, root_public_key=None):
-        with _updater_dxf_lock:
-            for d in ['current', 'previous']:
-                try:
-                    makedirs(path.join(self._copy_repo_dir, 'metadata', d))
-                except OSError as exception:
-                    import errno
-                    if exception.errno != errno.EEXIST:
-                        raise
-            # If root public key was passed, we shouldn't rely on the current
-            # version but instead retrieve a new one and verify it using
-            # the public key.
-            if root_public_key:
-                dgst = self._dxf.get_alias('root.json')[0]
-                temp_file = tuf.util.TempFile()
-                try:
-                    for chunk in self._dxf.pull_blob(dgst):
-                        temp_file.write(chunk)
-                    metadata = temp_file.read()
-                    metadata_signable = json.loads(metadata)
-                    tuf.formats.check_signable_object_format(metadata_signable)
-                    tuf.client.updater.Updater._ensure_not_expired.__func__(
-                        None, metadata_signable['signed'], 'root')
-                    # This metadata is claiming to be root.json
-                    # Get the keyid of the signature and use it to add the root
-                    # public key to the keydb. Thus when we verify the signature
-                    # the root public key will be used for verification.
-                    keyid = metadata_signable['signatures'][0]['keyid']
-                    tuf.keydb.add_key({
-                        'keytype': 'rsa',
-                        'keyid': keyid,
-                        'keyval': {'public': root_public_key}
-                    }, keyid)
-                    tuf.roledb.add_role('root', {
-                        'keyids': [keyid],
-                        'threshold': 1
-                    })
-                    if not tuf.sig.verify(metadata_signable, 'root'):
-                        raise tuf.BadSignatureError('root')
-                    temp_file.move(path.join(self._copy_repo_dir,
-                                             'metadata',
-                                             'current',
-                                             'root.json'))
-                except:
-                    temp_file.close_temp_file()
-                    raise
-            tuf.conf.repository_directory = self._copy_repo_dir
-            # pylint: disable=global-statement
-            global _updater_dxf
-            _updater_dxf = self._dxf
-            try:
-                updater = tuf.client.updater.Updater('updater',
-                                                     self._repository_mirrors)
-                updater.refresh(False)
-                targets = updater.all_targets()
-                updated_targets = updater.updated_targets(
-                    targets, self._copy_targets_dir)
-                updater.remove_obsolete_targets(self._copy_targets_dir)
-                return [t['filepath'][1:] for t in updated_targets]
-            finally:
-                tuf.conf.repository_directory = None
-                _updater_dxf = None
+    @_master_repo_locked
+    def list_aliases(self):
+        repository = load_repository(self._master_repo_dir)
+        #  pylint: disable=no-member
+        return repository.targets.target_files()
 
-    def _get_digest(self, alias, size=False):
-        with _updater_dxf_lock:
-            tuf.conf.repository_directory = self._copy_repo_dir
-            # pylint: disable=global-statement
-            global _updater_dxf
-            _updater_dxf = self._dxf
+class DTufCopy(DTufCommon):
+    # pylint: disable=too-many-arguments
+    def __init__(self, host, repo, repos_root=None, auth=None, insecure=False):
+        super(DTufCopy, self).__init__(host, repo, repos_root, auth, insecure)
+        self._copy_dir = path.join(self._repo_root, 'copy')
+        self._copy_repo_lock = fasteners.process_lock.InterProcessLock(
+            path.join(self._copy_dir, 'lock'))
+        self._copy_repo_dir = path.join(self._copy_dir, 'repository')
+        self._copy_targets_dir = path.join(self._copy_repo_dir, 'targets')
+        self._repository_mirrors = {
+            'dtuf': {
+                'url_prefix': 'https://' + host + '/' + repo,
+                'metadata_path': '',
+                'targets_path': '',
+                'confined_target_dirs': ['']
+            }
+        }
+
+    @_copy_repo_locked
+    def pull_metadata(self, root_public_key=None):
+        for d in ['current', 'previous']:
             try:
-                updater = tuf.client.updater.Updater('updater',
-                                                     self._repository_mirrors)
-                target = updater.target(alias)
-                updater.download_target(target, self._copy_targets_dir)
-                with open(path.join(self._copy_targets_dir, alias), 'rb') as f:
-                    manifest = f.read()
-            finally:
-                tuf.conf.repository_directory = None
-                _updater_dxf = None
+                makedirs(path.join(self._copy_repo_dir, 'metadata', d))
+            except OSError as exception:
+                import errno
+                if exception.errno != errno.EEXIST:
+                    raise
+        # If root public key was passed, we shouldn't rely on the current
+        # version but instead retrieve a new one and verify it using
+        # the public key.
+        if root_public_key:
+            dgst = self._dxf.get_alias('root.json')[0]
+            temp_file = tuf.util.TempFile()
+            try:
+                for chunk in self._dxf.pull_blob(dgst):
+                    temp_file.write(chunk)
+                metadata = temp_file.read()
+                metadata_signable = json.loads(metadata)
+                tuf.formats.check_signable_object_format(metadata_signable)
+                tuf.client.updater.Updater._ensure_not_expired.__func__(
+                    None, metadata_signable['signed'], 'root')
+                # This metadata is claiming to be root.json
+                # Get the keyid of the signature and use it to add the root
+                # public key to the keydb. Thus when we verify the signature
+                # the root public key will be used for verification.
+                keyid = metadata_signable['signatures'][0]['keyid']
+                tuf.keydb.add_key({
+                    'keytype': 'rsa',
+                    'keyid': keyid,
+                    'keyval': {'public': root_public_key}
+                }, keyid)
+                tuf.roledb.add_role('root', {
+                    'keyids': [keyid],
+                    'threshold': 1
+                })
+                if not tuf.sig.verify(metadata_signable, 'root'):
+                    raise tuf.BadSignatureError('root')
+                temp_file.move(path.join(self._copy_repo_dir,
+                                         'metadata',
+                                         'current',
+                                         'root.json'))
+            except:
+                temp_file.close_temp_file()
+                raise
+        updater = tuf.client.updater.Updater('updater',
+                                             self._repository_mirrors)
+        updater.refresh(False)
+        targets = updater.all_targets()
+        updated_targets = updater.updated_targets(
+            targets, self._copy_targets_dir)
+        updater.remove_obsolete_targets(self._copy_targets_dir)
+        return [t['filepath'][1:] for t in updated_targets]
+
+    @_copy_repo_locked
+    def _get_digest(self, alias, size=False):
+        updater = tuf.client.updater.Updater('updater',
+                                             self._repository_mirrors)
+        target = updater.target(alias)
+        updater.download_target(target, self._copy_targets_dir)
+        with open(path.join(self._copy_targets_dir, alias), 'rb') as f:
+            manifest = f.read()
         dgsts = self._dxf.get_alias(manifest=manifest, verify=False, sizes=size)
         assert len(dgsts) == 1
         return dgsts[0]
 
     def pull_blob(self, alias, size=False):
-        return self._dxf.pull_blob(self._get_digest(alias), size=True)
+        return self._dxf.pull_blob(self._get_digest(alias), size=size)
 
     def blob_size(self, alias):
         _, size = self._get_digest(alias, size=True)
@@ -382,16 +436,8 @@ class DTuf(DTufBase):
         if file_dgst != alias_dgst:
             raise dxf.exceptions.DXFDigestMismatchError(file_dgst, alias_dgst)
 
+    @_copy_repo_locked
     def list_aliases(self):
-        with _updater_dxf_lock:
-            tuf.conf.repository_directory = self._copy_repo_dir
-            # pylint: disable=global-statement
-            global _updater_dxf
-            _updater_dxf = self._dxf
-            try:
-                updater = tuf.client.updater.Updater('updater',
-                                                     self._repository_mirrors)
-                return [t['filepath'][1:] for t in updater.all_targets()]
-            finally:
-                tuf.conf.repository_directory = None
-                _updater_dxf = None
+        updater = tuf.client.updater.Updater('updater',
+                                             self._repository_mirrors)
+        return [t['filepath'][1:] for t in updater.all_targets()]
