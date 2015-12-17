@@ -85,7 +85,7 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
         else:
             dgst = alias[0:alias.find('.')]
         n = 0
-        it, size = _updater_dxf.pull_blob(dgst, size=True):
+        it, size = _updater_dxf.pull_blob(dgst, size=True)
         for chunk in it:
             temp_file.write(chunk)
             if _updater_progress:
@@ -364,8 +364,11 @@ class DTufCopy(DTufCommon):
             }
         }
 
+    # pylint: disable=too-many-locals
     @_copy_repo_locked
     def pull_metadata(self, root_public_key=None, progress=None):
+        # pylint: disable=global-statement
+        global _updater_progress
         _updater_progress = progress
         for d in ['current', 'previous']:
             try:
@@ -433,10 +436,12 @@ class DTufCopy(DTufCommon):
             manifest = f.read()
         return self._dxf.get_alias(manifest=manifest, verify=False, sizes=sizes)
 
-    def pull_blobs(self, alias, sizes=False):
-        return [self._dxf.pull_blob(dgst, size=sizes)
-                for dgst in self._get_digests(alias)]
-        
+    def pull_blobs(self, alias, digests_and_sizes=False):
+        return [(it, dgst, size) if digests_and_sizes else it
+                for dgst in self._get_digests(alias)
+                for it, size in self._dxf.pull_blob(dgst,
+                                                    size=digests_and_sizes)]
+
     def blob_sizes(self, alias):
         return [size for _, size in self._get_digests(alias, sizes=True)]
 

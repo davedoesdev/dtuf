@@ -34,7 +34,7 @@
 import os
 import sys
 import argparse
-from tqdm import tqdm
+import tqdm
 import dtuf
 import dxf.exceptions
 
@@ -186,9 +186,10 @@ def doit():
         for name in args.args:
             if not name.startswith('@'):
                 parser.error('invalid alias')
-            for (n, (it, size)) in enumerate(dtuf_copy.pull_blobs(name[1:]))
+            for it, dgst, size in dtuf_copy.pull_blobs(name[1:], True):
+                # pylint: disable=blacklisted-name
                 if os.environ.get('DTUF_PROGRESS') == '1':
-                    bar = tqdm(desc=name + '#' + str(n), total=size, leave=True)
+                    bar = tqdm.tqdm(desc=dgst[0:8], total=size, leave=True)
                 else:
                     bar = None
                 for chunk in it:
@@ -202,7 +203,7 @@ def doit():
         for name in args.args:
             if not name.startswith('@'):
                 parser.error('invalid alias')
-            for size in dtuf_copy.blob_sizes(name[1:])
+            for size in dtuf_copy.blob_sizes(name[1:]):
                 print(size)
 
     elif args.op == 'check-blobs':
