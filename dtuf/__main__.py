@@ -34,6 +34,11 @@
 # pass repositories directory through DTUF_REPOSITORIES_ROOT
 # (have repo subdirs underneath and then master and copy subdirs under those)
 
+# DTUF_PROGRESS for progress bar on push-target, push-metadata, pull-metadata
+# and pull-target
+
+# DTUF_BLOB_INFO to prepend digest and size before blob for pull-target
+
 # pylint: disable=wrong-import-position,wrong-import-order,superfluous-parens
 import os
 import sys
@@ -74,17 +79,18 @@ for c in choices:
 
 if os.environ.get('DTUF_PROGRESS') == '1':
     bars = {}
-    def _progress(dgst, chunk, size):
+    def progress(dgst, chunk, size):
+        if dgst not in bars:
+            bars[dgst] = tqdm.tqdm(desc=dgst[0:8],
+                                   total=size,
+                                   leave=True)
         if len(chunk) > 0:
-            if dgst not in bars:
-                bars[dgst] = tqdm.tqdm(desc=dgst[0:8],
-                                       total=size,
-                                       leave=True)
             bars[dgst].update(len(chunk))
-        elif dgst in bars:
+        if bars[dgst].n >= bars[dgst].total:
             bars[dgst].close()
+            del bars[dgst]
 else:
-    _progress = None
+    progress = None
 
 # pylint: disable=redefined-variable-type
 args = parser.parse_args()
@@ -154,7 +160,7 @@ def doit():
             parser.error('invalid target')
         dtuf_master.push_target(args.args[0][1:],
                                 *args.args[1:],
-                                progress=_progress)
+                                progress=progress)
 
     elif args.op == 'del-target':
         for name in args.args:
@@ -168,7 +174,7 @@ def doit():
         dtuf_master.push_metadata(os.environ.get('DTUF_TARGETS_KEY_PASSWORD'),
                                   os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
                                   os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'),
-                                  _progress)
+                                  progress)
 
     elif args.op == 'list-master-target':
         if len(args.args) > 0:
@@ -183,7 +189,7 @@ def doit():
         if len(args.args) == 1:
             with open(args.args[0], 'rb') as f:
                 root_public_key = f.read()
-        for name in dtuf_copy.pull_metadata(root_public_key, _progress):
+        for name in dtuf_copy.pull_metadata(root_public_key, progress):
             print(name)
 
     elif args.op == 'pull-target':
@@ -191,17 +197,14 @@ def doit():
             if not name.startswith('@'):
                 parser.error('invalid target')
             for it, dgst, size in dtuf_copy.pull_target(name[1:], True):
-                # pylint: disable=blacklisted-name
-                if os.environ.get('DTUF_PROGRESS') == '1':
-                    bar = tqdm.tqdm(desc=dgst[0:8], total=size, leave=True)
-                else:
-                    bar = None
+                if environ.get('DTUF_BLOB_INFO') == '1':
+                    print(dgst + ' ' + str(size))
+                if progress:
+                    progress(dgst, b'', size)
                 for chunk in it:
-                    if bar is not None:
-                        bar.update(len(chunk))
+                    if progress:
+                        progress(dgst, chunk, size)
                     sys.stdout.write(chunk)
-                if bar is not None:
-                    bar.close()
 
     elif args.op == 'blob-sizes':
         for name in args.args:

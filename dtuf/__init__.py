@@ -86,6 +86,8 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
             dgst = target[0:target.find('.')]
         n = 0
         it, size = _updater_dxf.pull_blob(dgst, size=True)
+        if _updater_progress:
+            _updater_progress(dgst, b'', size)
         for chunk in it:
             temp_file.write(chunk)
             if _updater_progress:
@@ -385,6 +387,8 @@ class DTufCopy(DTufCommon):
             temp_file = tuf.util.TempFile()
             try:
                 it, size = self._dxf.pull_blob(dgst, size=True)
+                if progress:
+                    progress(dgst, b'', size)
                 for chunk in it:
                     if progress:
                         progress(dgst, chunk, size)
