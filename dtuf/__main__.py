@@ -5,18 +5,22 @@
 # dtuf create-metadata-keys <repo>     create metadata keys for repo
 # dtuf create-metadata <repo>          create metadata for repo
 
-# dtuf push-blobs <repo> @alias <@alias|file>...  upload blobs from files or blobs already uploads and set alias to them
-# dtuf del-blobs <repo> @alias...      delete blobs and aliases pointing to them
+# dtuf push-target <repo> @target <@target|file>...
+#                                      make a new target by uploading blobs
+#                                      from files or using blobs from existing
+#                                      targets
+# dtuf del-target <repo> @target...    delete blobs and targets pointing to them
 # dtuf push-metadata <repo>            update metadata and push it to remote
-# dtuf list-master-aliases <repo>      list all aliases in a repo
+# dtuf list-master-targets <repo>      list all targets in a repo
 
 # dtuf pull-metadata <repo> [<root-pubkey-file>]
 #                                      pull metadata from remote and print
-#                                      updated aliases
-# dtuf pull-blobs <repo> @alias...     download blobs to stdout
-# dtuf blob-sizes <repo> @alias...     print sizes of blobs
-# dtuf check-blobs <repo> @alias <file>... check files are latest blobs for alias
-# dtuf list-copy-aliases <repo>        list all aliases in a repo
+#                                      updated targets
+# dtuf pull-target <repo> @target...   download blobs to stdout
+# dtuf blob-sizes <repo> @target...    print sizes of blobs
+# dtuf check-target <repo> @target <file>...
+#                                      check files are latest blobs for target
+# dtuf list-copy-targets <repo>        list all targets in a repo
 # dtuf list-repos                      list all repos (may not all be TUF)
 
 # pass private key password through DTUF_ROOT_KEY_PASSWORD,
@@ -50,15 +54,15 @@ choices = ['list-repos',
            'create-root-key',
            'create-metadata-keys',
            'create-metadata',
-           'push-blobs',
-           'del-blobs',
+           'push-target',
+           'del-target',
            'push-metadata',
-           'list-master-aliases',
+           'list-master-targets',
            'pull-metadata',
-           'pull-blobs',
+           'pull-target',
            'blob-sizes',
-           'check-blobs',
-           'list-copy-aliases']
+           'check-target',
+           'list-copy-targets']
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='op')
@@ -96,7 +100,7 @@ elif args.op in ['auth',
                  'push-blob',
                  'del-blob',
                  'push-metadata',
-                 'list-master-aliases']:
+                 'list-master-targets']:
     dtuf_master = dtuf.DTufMaster(os.environ['DTUF_HOST'],
                                   args.repo,
                                   os.environ.get('DTUF_REPOSITORIES_ROOT'),
@@ -143,20 +147,20 @@ def doit():
                                     os.environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
                                     os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
 
-    elif args.op == 'push-blobs':
+    elif args.op == 'push-target':
         if len(args.args) < 2:
             parser.error('too few arguments')
         if not args.args[0].startswith('@'):
-            parser.error('invalid alias')
-        dtuf_master.push_blobs(args.args[0][1:],
-                               *args.args[1:],
-                               progress=_progress)
+            parser.error('invalid target')
+        dtuf_master.push_target(args.args[0][1:],
+                                *args.args[1:],
+                                progress=_progress)
 
-    elif args.op == 'del-blobs':
+    elif args.op == 'del-target':
         for name in args.args:
             if not name.startswith('@'):
-                parser.error('invalid alias')
-            dtuf_master.del_blobs(name[1:])
+                parser.error('invalid target')
+            dtuf_master.del_target(name[1:])
 
     elif args.op == 'push-metadata':
         if len(args.args) > 0:
@@ -166,10 +170,10 @@ def doit():
                                   os.environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'),
                                   _progress)
 
-    elif args.op == 'list-master-aliases':
+    elif args.op == 'list-master-target':
         if len(args.args) > 0:
             parser.error('too many arguments')
-        for name in dtuf_master.list_aliases():
+        for name in dtuf_master.list_targets():
             print(name)
 
     elif args.op == 'pull-metadata':
@@ -182,11 +186,11 @@ def doit():
         for name in dtuf_copy.pull_metadata(root_public_key, _progress):
             print(name)
 
-    elif args.op == 'pull-blobs':
+    elif args.op == 'pull-target':
         for name in args.args:
             if not name.startswith('@'):
-                parser.error('invalid alias')
-            for it, dgst, size in dtuf_copy.pull_blobs(name[1:], True):
+                parser.error('invalid target')
+            for it, dgst, size in dtuf_copy.pull_target(name[1:], True):
                 # pylint: disable=blacklisted-name
                 if os.environ.get('DTUF_PROGRESS') == '1':
                     bar = tqdm.tqdm(desc=dgst[0:8], total=size, leave=True)
@@ -202,21 +206,21 @@ def doit():
     elif args.op == 'blob-sizes':
         for name in args.args:
             if not name.startswith('@'):
-                parser.error('invalid alias')
+                parser.error('invalid target')
             for size in dtuf_copy.blob_sizes(name[1:]):
                 print(size)
 
-    elif args.op == 'check-blobs':
+    elif args.op == 'check-target':
         if len(args.args) < 2:
             parser.error('too few arguments')
         if not args.args[0].startswith('@'):
-            parser.error('invalid alias')
-        dtuf_copy.check_blobs(args.args[0][1:], *args.args[1:])
+            parser.error('invalid target')
+        dtuf_copy.check_target(args.args[0][1:], *args.args[1:])
 
-    elif args.op == 'list-copy-aliases':
+    elif args.op == 'list-copy-target':
         if len(args.args) > 0:
             parser.error('too many arguments')
-        for name in dtuf_copy.list_aliases():
+        for name in dtuf_copy.list_targets():
             print(name)
 
     elif args.op == 'list-repos':

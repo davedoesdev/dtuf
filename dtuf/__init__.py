@@ -30,11 +30,11 @@ from dxf import DXFBase, DXF, hash_file, hash_bytes
 import dxf.exceptions
 from dtuf import exceptions
 
-def _is_metadata_file(alias):
-    return alias.endswith('root.json') or \
-           alias.endswith('targets.json') or \
-           alias.endswith('snapshot.json') or \
-           alias.endswith('timestamp.json')
+def _is_metadata_file(target):
+    return target.endswith('root.json') or \
+           target.endswith('targets.json') or \
+           target.endswith('snapshot.json') or \
+           target.endswith('timestamp.json')
 
 _tuf_lock = threading.Lock()
 _updater_dxf = None
@@ -77,13 +77,13 @@ def _copy_repo_locked(f):
     return locked
 
 def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
-    _, alias = urlparse.urlparse(url).path.split('//')
+    _, target = urlparse.urlparse(url).path.split('//')
     temp_file = tuf.util.TempFile()
     try:
-        if _is_metadata_file(alias):
-            dgst = _updater_dxf.get_alias(alias)[0]
+        if _is_metadata_file(target):
+            dgst = _updater_dxf.get_alias(target)[0]
         else:
-            dgst = alias[0:alias.find('.')]
+            dgst = target[0:target.find('.')]
         n = 0
         it, size = _updater_dxf.pull_blob(dgst, size=True)
         for chunk in it:
@@ -244,28 +244,28 @@ class DTufMaster(DTufCommon):
         repository.write(consistent_snapshot=True)
 
     @_master_repo_locked
-    def push_blobs(self, alias, *filename_or_alias_list, **kwargs):
+    def push_target(self, target, *filename_or_target_list, **kwargs):
         progress = kwargs.get('progress')
-        if _is_metadata_file(alias):
-            raise exceptions.DTufReservedAliasError(alias)
+        if _is_metadata_file(target):
+            raise exceptions.DTufReservedTargetError(target)
         dgsts = []
-        for filename_or_alias in filename_or_alias_list:
-            if filename_or_alias.startswith('@'):
+        for filename_or_target in filename_or_target_list:
+            if filename_or_target.startswith('@'):
                 with open(path.join(self._master_targets_dir,
-                                    filename_or_alias[1:]), 'rb') as f:
+                                    filename_or_target[1:]), 'rb') as f:
                     manifest = f.read()
                 dgsts += self._dxf.get_alias(manifest=manifest, verify=False)
             else:
-                dgsts.append(self._dxf.push_blob(filename_or_alias, progress))
-        manifest = self._dxf.make_unsigned_manifest(alias, *dgsts)
-        manifest_filename = path.join(self._master_targets_dir, alias)
+                dgsts.append(self._dxf.push_blob(filename_or_target, progress))
+        manifest = self._dxf.make_unsigned_manifest(target, *dgsts)
+        manifest_filename = path.join(self._master_targets_dir, target)
         with open(manifest_filename, 'wb') as f:
             f.write(manifest)
         self._dxf.push_blob(manifest_filename, progress)
 
     @_master_repo_locked
-    def del_blobs(self, alias):
-        manifest_filename = path.join(self._master_targets_dir, alias)
+    def del_target(self, target):
+        manifest_filename = path.join(self._master_targets_dir, target)
         with open(manifest_filename, 'rb') as f:
             manifest = f.read()
         manifest_dgst = hash_bytes(manifest)
@@ -341,7 +341,7 @@ class DTufMaster(DTufCommon):
             self._dxf.set_alias(f, dgst)
 
     @_master_repo_locked
-    def list_aliases(self):
+    def list_targets(self):
         repository = load_repository(self._master_repo_dir)
         #  pylint: disable=no-member
         return repository.targets.target_files()
@@ -427,32 +427,32 @@ class DTufCopy(DTufCommon):
         return [t['filepath'][1:] for t in updated_targets]
 
     @_copy_repo_locked
-    def _get_digests(self, alias, sizes=False):
+    def _get_digests(self, target, sizes=False):
         updater = tuf.client.updater.Updater('updater',
                                              self._repository_mirrors)
-        target = updater.target(alias)
-        updater.download_target(target, self._copy_targets_dir)
-        with open(path.join(self._copy_targets_dir, alias), 'rb') as f:
+        tgt = updater.target(target)
+        updater.download_target(tgt, self._copy_targets_dir)
+        with open(path.join(self._copy_targets_dir, target), 'rb') as f:
             manifest = f.read()
         return self._dxf.get_alias(manifest=manifest, verify=False, sizes=sizes)
 
-    def pull_blobs(self, alias, digests_and_sizes=False):
+    def pull_target(self, target, digests_and_sizes=False):
         return [(it, dgst, size) if digests_and_sizes else it
-                for dgst in self._get_digests(alias)
+                for dgst in self._get_digests(target)
                 for it, size in self._dxf.pull_blob(dgst,
                                                     size=digests_and_sizes)]
 
-    def blob_sizes(self, alias):
-        return [size for _, size in self._get_digests(alias, sizes=True)]
+    def blob_sizes(self, target):
+        return [size for _, size in self._get_digests(target, sizes=True)]
 
-    def check_blobs(self, alias, *filenames):
-        alias_dgsts = self._get_digests(alias)
+    def check_target(self, target, *filenames):
+        blob_dgsts = self._get_digests(target)
         file_dgsts = [hash_file(filename) for filename in filenames]
-        if file_dgsts != alias_dgsts:
-            raise dxf.exceptions.DXFDigestMismatchError(file_dgsts, alias_dgsts)
+        if file_dgsts != blob_dgsts:
+            raise dxf.exceptions.DXFDigestMismatchError(file_dgsts, blob_dgsts)
 
     @_copy_repo_locked
-    def list_aliases(self):
+    def list_targets(self):
         updater = tuf.client.updater.Updater('updater',
                                              self._repository_mirrors)
         return [t['filepath'][1:] for t in updater.all_targets()]
