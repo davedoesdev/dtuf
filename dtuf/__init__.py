@@ -110,6 +110,14 @@ def _strip_consistent_target_digest(filename):
     dirname, basename = path.split(filename)
     return path.join(dirname, basename[basename.find('.') + 1:])
 
+def write_with_progress(it, dgst, size, out, progress):
+    if progress:
+        progress(dgst, b'', size)
+    for chunk in it:
+        if progress:
+            progress(dgst, chunk, size)
+        out.write(chunk)
+
 class DTufBase(object):
     def _wrap_auth(self, auth=None):
         return lambda dxf_obj, response: auth(self, response) if auth else None
@@ -387,12 +395,7 @@ class DTufCopy(DTufCommon):
             temp_file = tuf.util.TempFile()
             try:
                 it, size = self._dxf.pull_blob(dgst, size=True)
-                if progress:
-                    progress(dgst, b'', size)
-                for chunk in it:
-                    if progress:
-                        progress(dgst, chunk, size)
-                    temp_file.write(chunk)
+                write_with_progress(it, dgst, size, temp_file, progress)
                 metadata = temp_file.read()
                 metadata_signable = json.loads(metadata)
                 tuf.formats.check_signable_object_format(metadata_signable)

@@ -3,7 +3,7 @@ class DTufError(Exception):
 
 class DTufReservedTargetError(DTufError):
     def __init__(self, target):
-        super(DTufReservedAliasError, self).__init__()
+        super(DTufReservedTargetError, self).__init__()
         self._target = target
 
     def __str__(self):
