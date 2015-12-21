@@ -10,3 +10,5 @@
 /test/auth/auth.pem
 /test/auth/auth.key
 /test/ca.*
+/.coverage
+/.cache

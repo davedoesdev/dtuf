@@ -354,7 +354,7 @@ class DTufMaster(DTufCommon):
     def list_targets(self):
         repository = load_repository(self._master_repo_dir)
         #  pylint: disable=no-member
-        return repository.targets.target_files()
+        return [p.lstrip(path.sep) for p in repository.targets.target_files]
 
 class DTufCopy(DTufCommon):
     # pylint: disable=too-many-arguments
