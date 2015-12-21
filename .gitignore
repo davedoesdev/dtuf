@@ -1,6 +1,12 @@
 /tuf.log
-/setenv.sh
 /repos
 /dxf
 /python
 *.pyc
+/test/fixtures/*
+!/test/fixtures/.keep
+/test/registry/registry.pem
+/test/registry/registry.key
+/test/auth/auth.pem
+/test/auth/auth.key
+/test/ca.*

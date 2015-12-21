@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 import tempfile
+import shutil
 import requests
 import pytest
 import dtuf
@@ -45,12 +46,19 @@ def pytest_namespace():
         'username': 'fred',
         'password': '!WordPass0$',
 
-        'repo': 'foo/bar'
+        'repo': 'foo/bar',
+
+        'root_key_password': 'Dummypw1',
+        'targets_key_password': 'Dummypw2',
+        'snapshot_key_password': 'Dummypw3',
+        'timestamp_key_password': 'Dummypw4'
     }
 
 @pytest.fixture(scope='module')
 def repo_dir(request):
     dir_name = tempfile.mkdtemp() 
+    # Be ultra cautious because we'll be doing rm -rf on this directory
+    assert dir_name.startswith('/tmp/')
     def cleanup():
         shutil.rmtree(dir_name)
     request.addfinalizer(cleanup)
@@ -107,6 +115,7 @@ def dtuf_master_obj(repo_dir, request):
                         auth,
                         not auth)
     r.test_do_token = do_token
+    r.test_repo_dir = repo_dir
     for _ in range(5):
         try:
             assert r.list_repos() == []
@@ -124,6 +133,7 @@ def dtuf_copy_obj(repo_dir, request):
                       auth,
                       not auth)
     r.test_do_token = do_token
+    r.test_repo_dir = repo_dir
     for _ in range(5):
         try:
             assert r.list_repos() == []
@@ -139,7 +149,8 @@ def dtuf_main(repo_dir, request):
         'DTUF_HOST': 'localhost:5000',
         'DTUF_REPOSITORIES_ROOT': repo_dir,
         'DTUF_INSECURE': '0' if auth else '1',
-        'TEST_DO_TOKEN': do_token
+        'TEST_DO_TOKEN': do_token,
+        'TEST_REPO_DIR': repo_dir
     }
     if auth:
         environ['DTUF_USERNAME'] = pytest.username

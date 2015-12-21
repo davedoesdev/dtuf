@@ -67,7 +67,7 @@ def _master_repo_locked(f):
     return locked
 
 def _copy_repo_locked(f):
-    def locked(self, args, **kwargs):
+    def locked(self, *args, **kwargs):
         # pylint: disable=global-statement,protected-access
         def setup():
             global _updater_dxf
