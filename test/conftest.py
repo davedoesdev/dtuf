@@ -64,7 +64,6 @@ def repo_dir(request):
     request.addfinalizer(cleanup)
     return dir_name
 
-# pylint: disable=redefined-outer-name
 def _auth(dtuf_obj, response):
     dtuf_obj.auth_by_password(pytest.username, pytest.password, response=response)
 
@@ -107,36 +106,26 @@ def _setup_fixture(request):
 _fixture_params = [(None, False), (_auth, False), (_auth, True)]
 
 @pytest.fixture(scope='module', params=_fixture_params)
-def dtuf_master_obj(repo_dir, request):
+def dtuf_objs(repo_dir, request):
     auth, do_token = _setup_fixture(request)
-    r = dtuf.DTufMaster('localhost:5000',
-                        pytest.repo,
-                        repo_dir,
-                        auth,
-                        not auth)
-    r.test_do_token = do_token
-    r.test_repo_dir = repo_dir
+    class DTufObjs(object):
+        def __init__(self):
+            self.do_token = do_token
+            self.repo_dir = repo_dir
+            self.master = dtuf.DTufMaster('localhost:5000',
+                                          pytest.repo,
+                                          repo_dir,
+                                          auth,
+                                          not auth)
+            self.copy = dtuf.DTufCopy('localhost:5000',
+                                      pytest.repo,
+                                      repo_dir,
+                                      auth,
+                                      not auth)
+    r = DTufObjs()
     for _ in range(5):
         try:
-            assert r.list_repos() == []
-            return r
-        except requests.exceptions.ConnectionError as ex:
-            time.sleep(1)
-    raise ex
-
-@pytest.fixture(scope='module', params=_fixture_params)
-def dtuf_copy_obj(repo_dir, request):
-    auth, do_token = _setup_fixture(request)
-    r = dtuf.DTufCopy('localhost:5000',
-                      pytest.repo,
-                      repo_dir,
-                      auth,
-                      not auth)
-    r.test_do_token = do_token
-    r.test_repo_dir = repo_dir
-    for _ in range(5):
-        try:
-            assert r.list_repos() == []
+            assert r.master.list_repos() == []
             return r
         except requests.exceptions.ConnectionError as ex:
             time.sleep(1)

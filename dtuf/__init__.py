@@ -444,10 +444,13 @@ class DTufCopy(DTufCommon):
         return self._dxf.get_alias(manifest=manifest, verify=False, sizes=sizes)
 
     def pull_target(self, target, digests_and_sizes=False):
-        return [(it, dgst, size) if digests_and_sizes else it
-                for dgst in self._get_digests(target)
-                for it, size in self._dxf.pull_blob(dgst,
-                                                    size=digests_and_sizes)]
+        if digests_and_sizes:
+            return [(it, dgst, size) for (dgst, (it, size)) in
+                    [(dgst, self._dxf.pull_blob(dgst, size=True))
+                     for dgst in self._get_digests(target)]]
+        else:
+            return [self._dxf.pull_blob(dgst)
+                    for dgst in self._get_digests(target)]
 
     def blob_sizes(self, target):
         return [size for _, size in self._get_digests(target, sizes=True)]
