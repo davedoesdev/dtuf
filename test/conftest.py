@@ -57,9 +57,9 @@ def pytest_namespace():
 @pytest.fixture(scope='module')
 def repo_dir(request):
     dir_name = tempfile.mkdtemp() 
-    # Be ultra cautious because we'll be doing rm -rf on this directory
-    assert dir_name.startswith('/tmp/')
     def cleanup():
+        # Be ultra cautious because we'll be doing rm -rf on this directory
+        assert dir_name.startswith('/tmp/')
         shutil.rmtree(dir_name)
     request.addfinalizer(cleanup)
     return dir_name

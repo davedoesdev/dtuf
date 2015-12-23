@@ -1,4 +1,5 @@
 import hashlib
+import shutil
 from os import path
 import pytest
 import tuf
@@ -58,8 +59,20 @@ def test_list_master_targets(dtuf_objs):
 
 def test_pull_metadata(dtuf_objs):
     exists = _copy_metadata_exists(dtuf_objs, 'root')
-    with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError):
+    with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError) as ex:
         dtuf_objs.copy.pull_metadata()
+    if exists:
+        for ex2 in ex.value.mirror_errors.values():
+            assert isinstance(ex2, tuf.ReplayedMetadataError)
+            assert ex2.metadata_role == 'timestamp'
+            assert ex2.previous_version == 2 # create=1, push=2
+            assert ex2.current_version == 3
+        # Because of test_update below, the copy's current metadata will have
+        # a higher version number than the newly-created and pushed master
+        # metadata. That will generate a ReplayedMetadata error.
+        dir_name = path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'metadata', 'current')
+        assert dir_name.startswith('/tmp/') # check what we're about to remove!
+        shutil.rmtree(dir_name)
     with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
         assert sorted(dtuf_objs.copy.pull_metadata(f.read())) == \
             ([] if exists else ['foobar', 'hello', 'there'])
@@ -127,11 +140,21 @@ def test_pull_target(dtuf_objs):
         assert ex2.got == hashlib.sha256().hexdigest()
         assert ex2.expected == dxf.hash_file(path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'targets', 'hello'))
 
+def test_update(dtuf_objs):
+    dtuf_objs.master.push_target('foobar', '@there', '@foobar', pytest.blob3_file)
+    dtuf_objs.master.push_metadata(pytest.targets_key_password,
+                                   pytest.snapshot_key_password,
+                                   pytest.timestamp_key_password)
+    assert dtuf_objs.copy.pull_metadata() == ['foobar']
+
+
 # test updating target
 # test_blob_sizes
 # test_check_target
 # test_list_copy_targets
 
 # test_not_found above
+
+# test with different root key
 
 # def test_del_target
