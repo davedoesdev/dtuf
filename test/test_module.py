@@ -4,6 +4,7 @@ from os import path
 import pytest
 import tuf
 import dxf.exceptions
+import dtuf.exceptions
 
 def _check_key_exists(dtuf_objs, key):
     assert path.exists(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', key + '_key'))
@@ -44,10 +45,19 @@ def test_create_metadata(dtuf_objs):
     _check_master_metadata_exists(dtuf_objs, 'root')
     _check_master_metadata_exists(dtuf_objs, 'timestamp')
 
+def _reserved_target(dtuf_objs, target):
+    with pytest.raises(dtuf.exceptions.DTufReservedTargetError) as ex:
+        dtuf_objs.master.push_target(target, '@hello')
+    assert ex.value.target == target
+
 def test_push_target(dtuf_objs):
     dtuf_objs.master.push_target('hello', pytest.blob1_file)
     dtuf_objs.master.push_target('there', pytest.blob2_file)
     dtuf_objs.master.push_target('foobar', '@hello', pytest.blob2_file)
+    _reserved_target(dtuf_objs, 'root.json')
+    _reserved_target(dtuf_objs, 'targets.json')
+    _reserved_target(dtuf_objs, 'snapshot.json')
+    _reserved_target(dtuf_objs, 'timestamp.json')
 
 def test_push_metadata(dtuf_objs):
     dtuf_objs.master.push_metadata(pytest.targets_key_password,
@@ -73,9 +83,13 @@ def test_pull_metadata(dtuf_objs):
         dir_name = path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
+    else:
+        assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
+    with pytest.raises(tuf.CryptoError) as ex:
+        dtuf_objs.copy.pull_metadata(pytest.dummy_root_pub_key)
     with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
         assert sorted(dtuf_objs.copy.pull_metadata(f.read())) == \
-            ([] if exists else ['foobar', 'hello', 'there'])
+            (['foobar'] if exists else ['foobar', 'hello', 'there'])
     assert _copy_metadata_exists(dtuf_objs, 'root')
     assert _copy_metadata_exists(dtuf_objs, 'targets')
     assert _copy_metadata_exists(dtuf_objs, 'snapshot')
@@ -146,15 +160,39 @@ def test_update(dtuf_objs):
                                    pytest.snapshot_key_password,
                                    pytest.timestamp_key_password)
     assert dtuf_objs.copy.pull_metadata() == ['foobar']
+    _pull_target(dtuf_objs, 'foobar', [pytest.blob2_hash, pytest.blob1_hash, pytest.blob2_hash, pytest.blob3_hash], [pytest.blob2_size, pytest.blob1_size, pytest.blob2_size, pytest.blob3_size])
 
+def test_blob_sizes(dtuf_objs):
+    assert dtuf_objs.copy.blob_sizes('hello') == [pytest.blob1_size]
+    assert dtuf_objs.copy.blob_sizes('there') == [pytest.blob2_size]
+    assert dtuf_objs.copy.blob_sizes('foobar') == [pytest.blob2_size, pytest.blob1_size, pytest.blob2_size, pytest.blob3_size]
 
-# test updating target
-# test_blob_sizes
-# test_check_target
-# test_list_copy_targets
+def test_check_target(dtuf_objs):
+    dtuf_objs.copy.check_target('hello', pytest.blob1_file)
+    dtuf_objs.copy.check_target('there', pytest.blob2_file)
+    dtuf_objs.copy.check_target('foobar', pytest.blob2_file, pytest.blob1_file, pytest.blob2_file, pytest.blob3_file)
+    with pytest.raises(dxf.exceptions.DXFDigestMismatchError) as ex:
+        dtuf_objs.copy.check_target('hello', pytest.blob2_file)
+    assert ex.value.got == [pytest.blob2_hash]
+    assert ex.value.expected == [pytest.blob1_hash]
 
-# test_not_found above
+def test_list_copy_targets(dtuf_objs):
+    assert sorted(dtuf_objs.copy.list_targets()) == ['foobar', 'hello', 'there']
 
-# test with different root key
+def _auth(dtuf_objs, obj_type):
+    obj = getattr(dtuf_objs, obj_type)
+    if obj._dxf._insecure:
+        with pytest.raises(dxf.exceptions.DXFAuthInsecureError):
+            obj.auth_by_password(pytest.username, pytest.password)
+    elif dtuf_objs.do_token:
+        assert obj.auth_by_password(pytest.username, pytest.password, '*') == obj.token
+        assert obj.token
+    else:
+        assert obj.auth_by_password(pytest.username, pytest.password) is None
+
+def test_auth(dtuf_objs):
+    _auth(dtuf_objs, 'master')
+    _auth(dtuf_objs, 'copy')
 
 # def test_del_target
+# test_not_found above

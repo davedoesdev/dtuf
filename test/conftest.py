@@ -5,6 +5,8 @@ import tempfile
 import shutil
 import requests
 import pytest
+import tuf.keys
+import tuf.repository_lib
 import dtuf
 import dtuf.main
 
@@ -51,7 +53,9 @@ def pytest_namespace():
         'root_key_password': 'Dummypw1',
         'targets_key_password': 'Dummypw2',
         'snapshot_key_password': 'Dummypw3',
-        'timestamp_key_password': 'Dummypw4'
+        'timestamp_key_password': 'Dummypw4',
+
+        'dummy_root_pub_key': tuf.keys.generate_rsa_key(tuf.repository_lib.DEFAULT_RSA_KEY_BITS)['keyval']['public']
     }
 
 @pytest.fixture(scope='module')
