@@ -3,6 +3,7 @@ import shutil
 from os import path
 import pytest
 import tuf
+import requests
 import dxf.exceptions
 import dtuf.exceptions
 
@@ -45,19 +46,25 @@ def test_create_metadata(dtuf_objs):
     _check_master_metadata_exists(dtuf_objs, 'root')
     _check_master_metadata_exists(dtuf_objs, 'timestamp')
 
+def test_push_target(dtuf_objs):
+    dtuf_objs.master.push_target('hello', pytest.blob1_file)
+    dtuf_objs.master.push_target('there', pytest.blob2_file)
+    dtuf_objs.master.push_target('foobar', '@hello', pytest.blob2_file)
+
 def _reserved_target(dtuf_objs, target):
     with pytest.raises(dtuf.exceptions.DTufReservedTargetError) as ex:
         dtuf_objs.master.push_target(target, '@hello')
     assert ex.value.target == target
 
-def test_push_target(dtuf_objs):
-    dtuf_objs.master.push_target('hello', pytest.blob1_file)
-    dtuf_objs.master.push_target('there', pytest.blob2_file)
-    dtuf_objs.master.push_target('foobar', '@hello', pytest.blob2_file)
+def test_reserved_target(dtuf_objs):
     _reserved_target(dtuf_objs, 'root.json')
     _reserved_target(dtuf_objs, 'targets.json')
     _reserved_target(dtuf_objs, 'snapshot.json')
     _reserved_target(dtuf_objs, 'timestamp.json')
+    target = hashlib.sha256().hexdigest() + '.hello'
+    with pytest.raises(dtuf.exceptions.DTufReservedTargetError) as ex:
+        dtuf_objs.master.push_target(target, '@hello')
+    assert ex.value.target == target
 
 def test_push_metadata(dtuf_objs):
     dtuf_objs.master.push_metadata(pytest.targets_key_password,
@@ -176,8 +183,15 @@ def test_check_target(dtuf_objs):
     assert ex.value.got == [pytest.blob2_hash]
     assert ex.value.expected == [pytest.blob1_hash]
 
+def _list_copy_targets(dtuf_copy_obj):
+    assert sorted(dtuf_copy_obj.list_targets()) == ['foobar', 'hello', 'there']
+
 def test_list_copy_targets(dtuf_objs):
-    assert sorted(dtuf_objs.copy.list_targets()) == ['foobar', 'hello', 'there']
+    _list_copy_targets(dtuf_objs.copy)
+
+def test_context_manager(dtuf_objs):
+    with dtuf_objs.copy as dtuf_copy_obj:
+        _list_copy_targets(dtuf_copy_obj)
 
 def _auth(dtuf_objs, obj_type):
     obj = getattr(dtuf_objs, obj_type)
@@ -194,5 +208,17 @@ def test_auth(dtuf_objs):
     _auth(dtuf_objs, 'master')
     _auth(dtuf_objs, 'copy')
 
-# def test_del_target
+def test_del_target(dtuf_objs):
+    with pytest.raises(requests.exceptions.HTTPError) as ex:
+        dtuf_objs.master.del_target('hello')
+    assert ex.value.response.status_code == requests.codes.method_not_allowed
+    # target file should have been removed but targets not rebuilt until push
+    assert sorted(dtuf_objs.master.list_targets()) == ['foobar', 'hello', 'there']
+    dtuf_objs.master.push_metadata(pytest.targets_key_password,
+                                   pytest.snapshot_key_password,
+                                   pytest.timestamp_key_password)
+    assert sorted(dtuf_objs.master.list_targets()) == ['foobar', 'there']
+
+# what about re-sign without recreating?
+#   add renew_metadata method which removes all keys and adds them again
 # test_not_found above

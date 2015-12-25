@@ -8,6 +8,8 @@ except ImportError:
 
 import json
 import threading
+import hashlib
+import re
 from os import path, getcwd, remove, makedirs, listdir
 from datetime import datetime, timedelta
 from tuf.repository_tool import ROOT_EXPIRATION,                 \
@@ -18,7 +20,8 @@ from tuf.repository_tool import ROOT_EXPIRATION,                 \
                                 import_rsa_publickey_from_file,  \
                                 import_rsa_privatekey_from_file, \
                                 create_new_repository,           \
-                                load_repository
+                                load_repository,                 \
+                                Repository
 import tuf.client.updater
 import tuf
 import tuf.util
@@ -106,9 +109,18 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
 # pylint: disable=protected-access
 tuf.download._download_file = _download_file
 
+_consistent_prefix_re = re.compile(r'[a-f0-9]{' +
+                                   str(hashlib.sha256().digest_size * 2) +
+                                   r'}\.')
+
+def _skip_consistent_target_digest(basename):
+    match = _consistent_prefix_re.match(basename)
+    return match.end() if match else 0
+
 def _strip_consistent_target_digest(filename):
     dirname, basename = path.split(filename)
-    return path.join(dirname, basename[basename.find('.') + 1:])
+    return path.join(dirname,
+                     basename[_skip_consistent_target_digest(basename):])
 
 def write_with_progress(it, dgst, size, out, progress):
     if progress:
@@ -138,6 +150,13 @@ class DTufBase(object):
 
     def list_repos(self):
         return self._dxf.list_repos()
+
+    def __enter__(self):
+        self._dxf.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        return self._dxf.__exit__(*args)
 
 class DTufCommon(DTufBase):
     # pylint: disable=too-many-arguments,super-init-not-called
@@ -196,13 +215,13 @@ class DTufMaster(DTufCommon):
         generate_and_write_rsa_keypair(self._timestamp_key_file,
                                        password=timestamp_key_password)
 
-    @_master_repo_locked
-    def create_metadata(self,
-                        root_key_password=None,
-                        targets_key_password=None,
-                        snapshot_key_password=None,
-                        timestamp_key_password=None):
-        # Import root key
+    def _add_metadata(self,
+                      repository,
+                      root_key_password=None,
+                      targets_key_password=None,
+                      snapshot_key_password=None,
+                      timestamp_key_password=None):
+        # Add root key to repository
         public_root_key = import_rsa_publickey_from_file(
             self._root_key_file + '.pub')
         if root_key_password is None:
@@ -210,9 +229,6 @@ class DTufMaster(DTufCommon):
         private_root_key = import_rsa_privatekey_from_file(
             self._root_key_file,
             root_key_password)
-
-        # Create repository object and load root key
-        repository = create_new_repository(self._master_repo_dir)
         repository.root.add_verification_key(public_root_key)
         repository.root.load_signing_key(private_root_key)
         repository.root.expiration = datetime.now() + self._root_lifetime
@@ -250,13 +266,27 @@ class DTufMaster(DTufCommon):
         repository.timestamp.add_verification_key(public_timestamp_key)
         repository.timestamp.load_signing_key(private_timestamp_key)
 
-        # Create metadata
+        # Write out metadata
         repository.write(consistent_snapshot=True)
+
+    @_master_repo_locked
+    def create_metadata(self,
+                        root_key_password=None,
+                        targets_key_password=None,
+                        snapshot_key_password=None,
+                        timestamp_key_password=None):
+        # Create repository and add metadata to it
+        self._add_metadata(create_new_repository(self._master_repo_dir),
+                           root_key_password,
+                           targets_key_password,
+                           snapshot_key_password,
+                           timestamp_key_password)
 
     @_master_repo_locked
     def push_target(self, target, *filename_or_target_list, **kwargs):
         progress = kwargs.get('progress')
-        if _is_metadata_file(target):
+        if _is_metadata_file(target) or \
+           _skip_consistent_target_digest(target) != 0:
             raise exceptions.DTufReservedTargetError(target)
         dgsts = []
         for filename_or_target in filename_or_target_list:
@@ -275,13 +305,22 @@ class DTufMaster(DTufCommon):
 
     @_master_repo_locked
     def del_target(self, target):
+        # read target manifest
         manifest_filename = path.join(self._master_targets_dir, target)
         with open(manifest_filename, 'rb') as f:
             manifest = f.read()
         manifest_dgst = hash_bytes(manifest)
+        # remove target manifest
         remove(manifest_filename)
+        # remove consistent snapshot links for target
+        for f in Repository.get_filepaths_in_directory(self._master_targets_dir):
+            dirname, basename = path.split(f)
+            if basename[_skip_consistent_target_digest(basename):] == target:
+                remove(f)
+        # delete blobs manifest points to
         for dgst in self._dxf.get_alias(manifest=manifest, verify=False):
             self._dxf.del_blob(dgst)
+        # delete manifest blob
         self._dxf.del_blob(manifest_dgst)
 
     @_master_repo_locked
@@ -298,7 +337,7 @@ class DTufMaster(DTufCommon):
         repository.targets.clear_targets()
         repository.targets.add_targets([
             _strip_consistent_target_digest(f)
-            for f in repository.get_filepaths_in_directory(self._master_targets_dir)])
+            for f in Repository.get_filepaths_in_directory(self._master_targets_dir)])
 
         # Update expirations
         repository.targets.expiration = datetime.now() + self._targets_lifetime
