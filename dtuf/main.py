@@ -4,6 +4,7 @@
 # dtuf create-root-key <repo>          create root key for repo
 # dtuf create-metadata-keys <repo>     create metadata keys for repo
 # dtuf create-metadata <repo>          create metadata for repo
+# dtuf reset-keys <repo>               reset repo keys
 
 # dtuf push-target <repo> @target <@target|file>...
 #                                      make a new target by uploading blobs
