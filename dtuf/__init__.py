@@ -83,7 +83,7 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
     _, target = urlparse.urlparse(url).path.split('//')
     temp_file = tuf.util.TempFile()
     try:
-        if _is_metadata_file(target):
+        if _skip_consistent_target_digest(target) == 0:
             dgst = _updater_dxf.get_alias(target)[0]
         else:
             dgst = target[0:target.find('.')]
@@ -395,8 +395,11 @@ class DTufMaster(DTufCommon):
         # Update metadata
         repository.write(consistent_snapshot=True)
 
-        # Upload root.json and timestamp.json versions without hash prefix
-        files = ['root.json', 'timestamp.json']
+        # Upload root.json and timestamp.json without hash prefix
+        for f in ['root.json', 'timestamp.json']:
+            dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
+                                       progress)
+            self._dxf.set_alias(f, dgst)
 
         # Upload consistent snapshot versions of current metadata files...
         # first load timestamp.json
@@ -404,7 +407,7 @@ class DTufMaster(DTufCommon):
             timestamp_data = f.read()
         # hash of content is timestamp prefix
         timestamp_cs = hash_bytes(timestamp_data) + '.timestamp.json'
-        files.append(timestamp_cs)
+        files = [timestamp_cs]
         # parse timestamp data
         timestamp = json.loads(timestamp_data)
         # get snapshot prefix
@@ -424,7 +427,6 @@ class DTufMaster(DTufCommon):
         for f in files:
             dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
                                        progress)
-            self._dxf.set_alias(f, dgst)
 
     @_master_repo_locked
     def list_targets(self):
