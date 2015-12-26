@@ -17,14 +17,21 @@ def _check_master_metadata_exists(dtuf_objs, metadata):
 def _copy_metadata_exists(dtuf_objs, metadata):
     return path.exists(path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'metadata', 'current', metadata + '.json'))
 
-def _not_found(dtuf_objs, target):
-    with pytest.raises(tuf.RepositoryError):
-        dtuf_objs.copy.blob_sizes(target)
-
-#def test_not_found(dtuf_objs):
-#    _not_found(dtuf_objs, 'hello')
-#    _not_found(dtuf_objs, 'there')
-#    _not_found(dtuf_objs, 'foobar')
+def test_not_found(dtuf_objs):
+    exists = _copy_metadata_exists(dtuf_objs, 'root')
+    for target in ['never added', 'hello']:
+        with pytest.raises(tuf.UnknownTargetError if exists else tuf.RepositoryError) as ex:
+            dtuf_objs.copy.blob_sizes(target)
+    for target in ['there', 'foobar']:
+        if exists:
+            with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+                dtuf_objs.copy.blob_sizes(target)
+            for ex2 in ex.value.mirror_errors.values():
+                assert isinstance(ex2, requests.exceptions.HTTPError)
+                assert ex2.response.status_code == requests.codes.not_found
+        else:
+            with pytest.raises(tuf.RepositoryError):
+                dtuf_objs.copy.blob_sizes(target)
 
 def test_create_root_key(dtuf_objs):
     dtuf_objs.master.create_root_key(pytest.root_key_password)
@@ -266,5 +273,3 @@ def test_reset_keys(dtuf_objs):
         assert isinstance(ex2, tuf.CryptoError)
     # pull metadata again with public root key
     assert _pull_with_master_public_root_key(dtuf_objs) == []
-
-# test_not_found above

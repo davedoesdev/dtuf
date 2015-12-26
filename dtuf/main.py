@@ -155,6 +155,14 @@ def doit(args, environ):
                                         environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
                                         environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
 
+        elif args.op == 'reset-keys':
+            if len(args.args) > 0:
+                parser.error('too many arguments')
+            dtuf_master.reset_keys(environ.get('DTUF_ROOT_KEY_PASSWORD'),
+                                   environ.get('DTUF_TARGETS_KEY_PASSWORD'),
+                                   environ.get('DTUF_SNAPSHOT_KEY_PASSWORD'),
+                                   environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'))
+
         elif args.op == 'push-target':
             if len(args.args) < 2:
                 parser.error('too few arguments')
