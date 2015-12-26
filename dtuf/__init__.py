@@ -122,6 +122,10 @@ def _strip_consistent_target_digest(filename):
     return path.join(dirname,
                      basename[_skip_consistent_target_digest(basename):])
 
+def _remove_keys(metadata):
+    for keyid in tuf.roledb.get_roleinfo(metadata.rolename)['keyids']:
+        metadata.remove_verification_key(tuf.keydb.get_key(keyid))
+
 def write_with_progress(it, dgst, size, out, progress):
     if progress:
         progress(dgst, b'', size)
@@ -275,8 +279,28 @@ class DTufMaster(DTufCommon):
                         targets_key_password=None,
                         snapshot_key_password=None,
                         timestamp_key_password=None):
-        # Create repository and add metadata to it
+        # Create repository object and add metadata to it
         self._add_metadata(create_new_repository(self._master_repo_dir),
+                           root_key_password,
+                           targets_key_password,
+                           snapshot_key_password,
+                           timestamp_key_password)
+
+    @_master_repo_locked
+    def reset_keys(self,
+                   root_key_password=None,
+                   targets_key_password=None,
+                   snapshot_key_password=None,
+                   timestamp_key_password=None):
+        # Load repository object
+        repository = load_repository(self._master_repo_dir)
+        # Remove keys
+        _remove_keys(repository.root)
+        _remove_keys(repository.targets)
+        _remove_keys(repository.snapshot)
+        _remove_keys(repository.timestamp)
+        # Add metadata to repository (adds keys)
+        self._add_metadata(repository,
                            root_key_password,
                            targets_key_password,
                            snapshot_key_password,
@@ -368,23 +392,36 @@ class DTufMaster(DTufCommon):
             timestamp_key_password)
         repository.timestamp.load_signing_key(private_timestamp_key)
 
-        # Get files in metadata directory
-        old_files = dict([(f, True) for f in listdir(self._master_staged_dir)])
-
         # Update metadata
         repository.write(consistent_snapshot=True)
 
-        # Work out which files have been added
-        new_files = [f for f in listdir(self._master_staged_dir) if f not in old_files]
+        # Upload root.json and timestamp.json versions without hash prefix
+        files = ['root.json', 'timestamp.json']
 
-        # root.json and timestamp.json versions without hash prefix
-        if 'root.json' not in new_files:
-            new_files.append('root.json')
-        if 'timestamp.json' not in new_files:
-            new_files.append('timestamp.json')
-
+        # Upload consistent snapshot versions of current metadata files...
+        # first load timestamp.json
+        with open(path.join(self._master_staged_dir, 'timestamp.json'), 'rb') as f:
+            timestamp_data = f.read()
+        # hash of content is timestamp prefix
+        timestamp_cs = hash_bytes(timestamp_data) + '.timestamp.json'
+        files.append(timestamp_cs)
+        # parse timestamp data
+        timestamp = json.loads(timestamp_data)
+        # get snapshot prefix
+        snapshot_cs = timestamp['signed']['meta']['snapshot.json']['hashes']['sha256'] + '.snapshot.json'
+        files.append(snapshot_cs)
+        # load prefixed snapshot.json
+        with open(path.join(self._master_staged_dir, snapshot_cs), 'rb') as f:
+            snapshot_data = f.read()
+        # parse snapshot data
+        snapshot = json.loads(snapshot_data)
+        # get targets and root prefixes
+        targets_cs = snapshot['signed']['meta']['targets.json']['hashes']['sha256'] + '.targets.json'
+        files.append(targets_cs)
+        root_cs = snapshot['signed']['meta']['root.json']['hashes']['sha256'] + '.root.json'
+        files.append(root_cs)
         # Upload metadata
-        for f in new_files:
+        for f in files:
             dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
                                        progress)
             self._dxf.set_alias(f, dgst)

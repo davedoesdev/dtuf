@@ -74,6 +74,10 @@ def test_push_metadata(dtuf_objs):
 def test_list_master_targets(dtuf_objs):
     assert sorted(dtuf_objs.master.list_targets()) == ['foobar', 'hello', 'there']
 
+def _pull_with_master_public_root_key(dtuf_objs):
+    with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
+        return dtuf_objs.copy.pull_metadata(f.read())
+
 def test_pull_metadata(dtuf_objs):
     exists = _copy_metadata_exists(dtuf_objs, 'root')
     with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError) as ex:
@@ -83,7 +87,7 @@ def test_pull_metadata(dtuf_objs):
             assert isinstance(ex2, tuf.ReplayedMetadataError)
             assert ex2.metadata_role == 'timestamp'
             assert ex2.previous_version == 2 # create=1, push=2
-            assert ex2.current_version == 3
+            assert ex2.current_version == 8
         # Because of test_update below, the copy's current metadata will have
         # a higher version number than the newly-created and pushed master
         # metadata. That will generate a ReplayedMetadata error.
@@ -94,9 +98,8 @@ def test_pull_metadata(dtuf_objs):
         assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
     with pytest.raises(tuf.CryptoError) as ex:
         dtuf_objs.copy.pull_metadata(pytest.dummy_root_pub_key)
-    with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
-        assert sorted(dtuf_objs.copy.pull_metadata(f.read())) == \
-            (['foobar'] if exists else ['foobar', 'hello', 'there'])
+    assert sorted(_pull_with_master_public_root_key(dtuf_objs)) == \
+        (['foobar', 'hello'] if exists else ['foobar', 'hello', 'there'])
     assert _copy_metadata_exists(dtuf_objs, 'root')
     assert _copy_metadata_exists(dtuf_objs, 'targets')
     assert _copy_metadata_exists(dtuf_objs, 'snapshot')
@@ -219,6 +222,49 @@ def test_del_target(dtuf_objs):
                                    pytest.timestamp_key_password)
     assert sorted(dtuf_objs.master.list_targets()) == ['foobar', 'there']
 
-# what about re-sign without recreating?
-#   add renew_metadata method which removes all keys and adds them again
+def test_reset_keys(dtuf_objs):
+    # create new non-root keys
+    dtuf_objs.master.create_metadata_keys(pytest.targets_key_password,
+                                          pytest.snapshot_key_password,
+                                          pytest.timestamp_key_password)
+    # reset repository keys
+    dtuf_objs.master.reset_keys(pytest.root_key_password,
+                                pytest.targets_key_password,
+                                pytest.snapshot_key_password,
+                                pytest.timestamp_key_password)
+    # push metadata
+    dtuf_objs.master.push_metadata(pytest.targets_key_password,
+                                   pytest.snapshot_key_password,
+                                   pytest.timestamp_key_password)
+    # pull metadata
+    # this will fail even though we didn't change the root key because root.json
+    # has been updated (it stores the other public keys); unless we pass in
+    # the root public key, we don't update root.json
+    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+        dtuf_objs.copy.pull_metadata()
+    for ex2 in ex.value.mirror_errors.values():
+        assert isinstance(ex2, tuf.CryptoError)
+    # pull metadata again with public root key
+    assert _pull_with_master_public_root_key(dtuf_objs) == []
+    # create new root key
+    dtuf_objs.master.create_root_key(pytest.root_key_password)
+    # reset repository keys
+    dtuf_objs.master.reset_keys(pytest.root_key_password,
+                                pytest.targets_key_password,
+                                pytest.snapshot_key_password,
+                                pytest.timestamp_key_password)
+    # push metadata
+    dtuf_objs.master.push_metadata(pytest.targets_key_password,
+                                   pytest.snapshot_key_password,
+                                   pytest.timestamp_key_password)
+    # pull metadata
+    # this will fail because root.json has been updated; unless we pass in the
+    # root public key, we don't update root.json
+    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+        dtuf_objs.copy.pull_metadata()
+    for ex2 in ex.value.mirror_errors.values():
+        assert isinstance(ex2, tuf.CryptoError)
+    # pull metadata again with public root key
+    assert _pull_with_master_public_root_key(dtuf_objs) == []
+
 # test_not_found above
