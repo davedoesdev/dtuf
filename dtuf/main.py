@@ -53,6 +53,7 @@ choices = ['list-repos',
            'create-root-key',
            'create-metadata-keys',
            'create-metadata',
+           'reset-keys',
            'push-target',
            'del-target',
            'push-metadata',
@@ -90,31 +91,32 @@ def doit(args, environ):
 
     def auth(dtuf_obj, response):
         # pylint: disable=redefined-outer-name
-        username = os.environ.get('DTUF_USERNAME')
-        password = os.environ.get('DTUF_PASSWORD')
+        username = environ.get('DTUF_USERNAME')
+        password = environ.get('DTUF_PASSWORD')
         if username and password:
             dtuf_obj.auth_by_password(username, password, response=response)
 
     # pylint: disable=redefined-variable-type
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     if args.op == 'list-repos':
         dtuf_base = dtuf.DTufBase(environ['DTUF_HOST'],
                                   auth,
-                                  environ.get('DTUF_INSECURE'))
+                                  environ.get('DTUF_INSECURE') == '1')
         dtuf_obj = dtuf_base
     elif args.op in ['auth',
                      'create-root-key',
                      'create-metadata-keys',
                      'create-metadata',
-                     'push-blob',
-                     'del-blob',
+                     'reset-keys',
+                     'push-target',
+                     'del-target',
                      'push-metadata',
                      'list-master-targets']:
         dtuf_master = dtuf.DTufMaster(environ['DTUF_HOST'],
                                       args.repo,
                                       environ.get('DTUF_REPOSITORIES_ROOT'),
                                       auth,
-                                      environ.get('DTUF_INSECURE'))
+                                      environ.get('DTUF_INSECURE') == '1')
         dtuf_obj = dtuf_master
     else:
         dtuf_copy = dtuf.DTufCopy(environ['DTUF_HOST'],
@@ -167,17 +169,13 @@ def doit(args, environ):
         elif args.op == 'push-target':
             if len(args.args) < 2:
                 parser.error('too few arguments')
-            if not args.args[0].startswith('@'):
-                parser.error('invalid target')
-            dtuf_master.push_target(args.args[0][1:],
+            dtuf_master.push_target(args.args[0],
                                     *args.args[1:],
                                     progress=progress)
 
         elif args.op == 'del-target':
             for name in args.args:
-                if not name.startswith('@'):
-                    parser.error('invalid target')
-                dtuf_master.del_target(name[1:])
+                dtuf_master.del_target(name)
 
         elif args.op == 'push-metadata':
             if len(args.args) > 0:
@@ -187,7 +185,7 @@ def doit(args, environ):
                                       environ.get('DTUF_TIMESTAMP_KEY_PASSWORD'),
                                       progress)
 
-        elif args.op == 'list-master-target':
+        elif args.op == 'list-master-targets':
             if len(args.args) > 0:
                 parser.error('too many arguments')
             for name in dtuf_master.list_targets():
@@ -208,28 +206,22 @@ def doit(args, environ):
 
         elif args.op == 'pull-target':
             for name in args.args:
-                if not name.startswith('@'):
-                    parser.error('invalid target')
-                for it, dgst, size in dtuf_copy.pull_target(name[1:], True):
+                for it, dgst, size in dtuf_copy.pull_target(name, True):
                     if environ.get('DTUF_BLOB_INFO') == '1':
                         print(dgst + ' ' + str(size))
                     dtuf.write_with_progress(it, dgst, size, sys.stdout, progress)
 
         elif args.op == 'blob-sizes':
             for name in args.args:
-                if not name.startswith('@'):
-                    parser.error('invalid target')
-                for size in dtuf_copy.blob_sizes(name[1:]):
+                for size in dtuf_copy.blob_sizes(name):
                     print(size)
 
         elif args.op == 'check-target':
             if len(args.args) < 2:
                 parser.error('too few arguments')
-            if not args.args[0].startswith('@'):
-                parser.error('invalid target')
-            dtuf_copy.check_target(args.args[0][1:], *args.args[1:])
+            dtuf_copy.check_target(args.args[0], *args.args[1:])
 
-        elif args.op == 'list-copy-target':
+        elif args.op == 'list-copy-targets':
             if len(args.args) > 0:
                 parser.error('too many arguments')
             for name in dtuf_copy.list_targets():
@@ -241,11 +233,12 @@ def doit(args, environ):
 
     try:
         _doit()
+        return 0
     except dxf.exceptions.DXFUnauthorizedError:
         import traceback
         traceback.print_exc()
         import errno
-        exit(errno.EACCES)
+        return errno.EACCES
 
 def main():
     exit(doit(sys.argv[1:], os.environ))
