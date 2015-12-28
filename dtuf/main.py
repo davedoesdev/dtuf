@@ -123,7 +123,7 @@ def doit(args, environ):
                                   args.repo,
                                   environ.get('DTUF_REPOSITORIES_ROOT'),
                                   auth,
-                                  environ.get('DTUF_INSECURE'))
+                                  environ.get('DTUF_INSECURE') == '1')
         dtuf_obj = dtuf_copy
 
     def _doit():
@@ -197,7 +197,7 @@ def doit(args, environ):
             root_public_key = None
             if len(args.args) == 1:
                 if args.args[0] == '-':
-                    root_public_key = sys.stdin
+                    root_public_key = sys.stdin.read()
                 else:
                     with open(args.args[0], 'rb') as f:
                         root_public_key = f.read()

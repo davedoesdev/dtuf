@@ -81,7 +81,7 @@ def test_push_metadata(dtuf_objs):
 def test_list_master_targets(dtuf_objs):
     assert sorted(dtuf_objs.master.list_targets()) == ['foobar', 'hello', 'there']
 
-def _pull_with_master_public_root_key(dtuf_objs):
+def _pull_metadata_with_master_public_root_key(dtuf_objs):
     with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
         return dtuf_objs.copy.pull_metadata(f.read())
 
@@ -103,9 +103,9 @@ def test_pull_metadata(dtuf_objs):
         shutil.rmtree(dir_name)
     else:
         assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
-    with pytest.raises(tuf.CryptoError) as ex:
+    with pytest.raises(tuf.CryptoError):
         dtuf_objs.copy.pull_metadata(pytest.dummy_root_pub_key)
-    assert sorted(_pull_with_master_public_root_key(dtuf_objs)) == \
+    assert sorted(_pull_metadata_with_master_public_root_key(dtuf_objs)) == \
         (['foobar', 'hello'] if exists else ['foobar', 'hello', 'there'])
     assert _copy_metadata_exists(dtuf_objs, 'root')
     assert _copy_metadata_exists(dtuf_objs, 'targets')
@@ -252,7 +252,7 @@ def test_reset_keys(dtuf_objs):
     for ex2 in ex.value.mirror_errors.values():
         assert isinstance(ex2, tuf.CryptoError)
     # pull metadata again with public root key
-    assert _pull_with_master_public_root_key(dtuf_objs) == []
+    assert _pull_metadata_with_master_public_root_key(dtuf_objs) == []
     # create new root key
     dtuf_objs.master.create_root_key(pytest.root_key_password)
     # reset repository keys
@@ -272,4 +272,4 @@ def test_reset_keys(dtuf_objs):
     for ex2 in ex.value.mirror_errors.values():
         assert isinstance(ex2, tuf.CryptoError)
     # pull metadata again with public root key
-    assert _pull_with_master_public_root_key(dtuf_objs) == []
+    assert _pull_metadata_with_master_public_root_key(dtuf_objs) == []
