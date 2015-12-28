@@ -1,5 +1,7 @@
 import os
 import sys
+import hashlib
+from StringIO import StringIO
 import pytest
 import tuf
 import dtuf.main
@@ -55,27 +57,69 @@ def test_list_master_targets(dtuf_main, capsys):
     assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'there']
     assert err == ""
 
-#def _copy_metadata_exists(dtuf_main, metadata):
-#    return path.exists(path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'metadata', 'current', metadata + '.json'))
+def _copy_metadata_exists(dtuf_main, metadata):
+    return path.exists(path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current', metadata + '.json'))
 
 def _pull_metadata_with_master_public_root_key(dtuf_main):
     return dtuf.main.doit(['pull-metadata', pytest.repo, path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'master', 'keys', 'root_key.pub')], dtuf_main)
 
 def test_pull_metadata(dtuf_main, monkeypatch, capsys):
+    exists = _copy_metadata_exists(dtuf_main, 'root')
+
+    #pull with no args, check error
+
     class FakeStdin(object):
         def read(self):
             return pytest.dummy_root_pub_key
     monkeypatch.setattr(sys, 'stdin', FakeStdin())
     with pytest.raises(tuf.CryptoError):
         assert dtuf.main.doit(['pull-metadata', pytest.repo, '-'], dtuf_main) == 0
-    out, err = capsys.readouterr()
+    capsys.readouterr()
     _pull_metadata_with_master_public_root_key(dtuf_main)
     out, err = capsys.readouterr()
-    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'there']
+    assert sorted(out.split(os.linesep)) == \
+        ([''] if exists else ['', 'foobar', 'hello', 'there'])
     assert err == ""
+
+def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, capfd):
+    environ = {'DTUF_BLOB_INFO': '1'}
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['pull-target', pytest.repo, target], environ if get_info else dtuf_main) == 0
+    encoding = capfd._capture.out.tmpfile.encoding
+    capfd._capture.out.tmpfile.encoding = None
+    out, err = capfd.readouterr()
+    if get_info:
+        outs = StringIO(out)
+        for i, size in enumerate(expected_sizes):
+            assert outs.readline() == expected_dgsts[i].encode('utf-8') + b' ' + str(size).encode('utf-8') + b'\n'
+            sha256 = hashlib.sha256()
+            sha256.update(outs.read(size))
+            assert sha256.hexdigest() == expected_dgsts[i]
+        assert len(outs.read()) == 0
+    else:
+        pos = 0
+        for i, size in enumerate(expected_sizes):
+            sha256 = hashlib.sha256()
+            sha256.update(out[pos:pos + size])
+            pos += size
+            assert sha256.hexdigest() == expected_dgsts[i]
+        assert pos == len(out)
+    assert err == ""
+    capfd._capture.out.tmpfile.encoding = encoding
+
+def test_pull_target(dtuf_main, capfd):
+    with pytest.raises(tuf.UnknownTargetError):
+        dtuf.main.doit(['pull-target', pytest.repo, 'dummy'], dtuf_main)
+    capfd.readouterr()
+    for get_info in [False, True]:
+        _pull_target(dtuf_main, 'hello', [pytest.blob1_hash], [pytest.blob1_size], get_info, capfd)
+        _pull_target(dtuf_main, 'there', [pytest.blob2_hash], [pytest.blob2_size], get_info, capfd)
+        _pull_target(dtuf_main, 'foobar', [pytest.blob1_hash, pytest.blob2_hash], [pytest.blob1_size, pytest.blob2_size], get_info, capfd)
+
 
 # bad_args
 # not_found
 # reset_keys
 # del_target
 # put run_test target in Makefile back
+# list_repos
