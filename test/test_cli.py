@@ -5,6 +5,7 @@ import shutil
 import errno
 from StringIO import StringIO
 import pytest
+import requests
 import tuf
 import dtuf.main
 from os import path
@@ -75,7 +76,7 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
             assert isinstance(ex2, tuf.ReplayedMetadataError)
             assert ex2.metadata_role == 'timestamp'
             assert ex2.previous_version == 2 # create=1, push=2
-            assert ex2.current_version == 6
+            assert ex2.current_version == 7
         # Because of test_reset_keys below, the copy's current metadata will
         # have a higher version number than the newly-created and pushed master
         # metadata. That will generate a ReplayedMetadata error.
@@ -95,7 +96,7 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
     out, err = capsys.readouterr()
     assert sorted(out.split(os.linesep)) == \
-        ([''] if exists else ['', 'foobar', 'hello', 'there'])
+        (['', 'hello'] if exists else ['', 'foobar', 'hello', 'there'])
     assert err == ""
 
 def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, capfd):
@@ -191,6 +192,21 @@ def test_auth(dtuf_main, capsys):
         assert out == ""
         assert err == ""
 
+def test_del_target(dtuf_main, capsys):
+    with pytest.raises(requests.exceptions.HTTPError) as ex:
+        dtuf.main.doit(['del-target', pytest.repo, 'hello'], dtuf_main)
+    assert ex.value.response.status_code == requests.codes.method_not_allowed
+    # target file should have been removed but targets not rebuilt until push
+    assert dtuf.main.doit(['list-master-targets', pytest.repo], dtuf_main) == 0
+    out, err = capsys.readouterr()
+    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'there']
+    assert err == ""
+    test_push_metadata(dtuf_main)
+    assert dtuf.main.doit(['list-master-targets', pytest.repo], dtuf_main) == 0
+    out, err = capsys.readouterr()
+    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'there']
+    assert err == ""
+
 def test_reset_keys(dtuf_main, capsys):
     # create new non-root keys
     test_create_root_key(dtuf_main)
@@ -246,11 +262,33 @@ def test_reset_keys(dtuf_main, capsys):
     assert out == ""
     assert err == ""
 
+def _num_args(dtuf_main, op, minimum, maximum, capsys):
+    if minimum is not None:
+        with pytest.raises(SystemExit):
+            dtuf.main.doit([op, pytest.repo] + ['a'] * (minimum - 1), dtuf_main)
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert "too few arguments" in err
+    if maximum is not None:
+        with pytest.raises(SystemExit):
+            dtuf.main.doit([op, pytest.repo] + ['a'] * (maximum + 1), dtuf_main)
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert "too many arguments" in err
+
+def test_bad_args(dtuf_main, capsys):
+    _num_args(dtuf_main, 'create-root-key', None, 0, capsys)
+    _num_args(dtuf_main, 'create-metadata-keys', None, 0, capsys)
+    _num_args(dtuf_main, 'create-metadata', None, 0, capsys)
+    _num_args(dtuf_main, 'reset-keys', None, 0, capsys)
+    _num_args(dtuf_main, 'push-target', 2, None, capsys)
+    _num_args(dtuf_main, 'push-metadata', None, 0, capsys)
+    _num_args(dtuf_main, 'list-master-targets', None, 0, capsys)
+    _num_args(dtuf_main, 'pull-metadata', None, 1, capsys)
+    _num_args(dtuf_main, 'check-target', 2, None, capsys)
+    _num_args(dtuf_main, 'list-copy-targets', None, 0, capsys)
 
 
-# bad_args
-# not_found
-# del_target
-# put run_test target in Makefile back
 # progress
+# put run_test target in Makefile back
 # get coverage up

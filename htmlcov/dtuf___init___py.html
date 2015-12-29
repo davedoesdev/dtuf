@@ -8,7 +8,7 @@
     
     
     <meta http-equiv="X-UA-Compatible" content="IE=emulateIE7" />
-    <title>Coverage for dtuf/__init__.py: 84%</title>
+    <title>Coverage for dtuf/__init__.py: 88%</title>
     <link rel="stylesheet" href="style.css" type="text/css">
     
     <script type="text/javascript" src="jquery.min.js"></script>
@@ -24,19 +24,19 @@
 <div id="header">
     <div class="content">
         <h1>Coverage for <b>dtuf/__init__.py</b> :
-            <span class="pc_cov">84%</span>
+            <span class="pc_cov">88%</span>
         </h1>
 
         <img id="keyboard_icon" src="keybd_closed.png" alt="Show keyboard shortcuts" />
 
         <h2 class="stats">
             323 statements &nbsp;
-            <span class="run hide_run shortkey_r button_toggle_run">287 run</span>
-            <span class="mis shortkey_m button_toggle_mis">36 missing</span>
+            <span class="run hide_run shortkey_r button_toggle_run">298 run</span>
+            <span class="mis shortkey_m button_toggle_mis">25 missing</span>
             <span class="exc shortkey_x button_toggle_exc">0 excluded</span>
 
             
-                <span class="par run hide_run shortkey_p button_toggle_par">20 partial</span>
+                <span class="par run hide_run shortkey_p button_toggle_par">21 partial</span>
             
         </h2>
     </div>
@@ -401,20 +401,20 @@
 <p id="n330" class="stm run hide_run"><a href="#n330">330</a></p>
 <p id="n331" class="pln"><a href="#n331">331</a></p>
 <p id="n332" class="pln"><a href="#n332">332</a></p>
-<p id="n333" class="stm mis"><a href="#n333">333</a></p>
-<p id="n334" class="stm mis"><a href="#n334">334</a></p>
-<p id="n335" class="stm mis"><a href="#n335">335</a></p>
-<p id="n336" class="stm mis"><a href="#n336">336</a></p>
+<p id="n333" class="stm run hide_run"><a href="#n333">333</a></p>
+<p id="n334" class="stm run hide_run"><a href="#n334">334</a></p>
+<p id="n335" class="stm run hide_run"><a href="#n335">335</a></p>
+<p id="n336" class="stm run hide_run"><a href="#n336">336</a></p>
 <p id="n337" class="pln"><a href="#n337">337</a></p>
-<p id="n338" class="stm mis"><a href="#n338">338</a></p>
+<p id="n338" class="stm run hide_run"><a href="#n338">338</a></p>
 <p id="n339" class="pln"><a href="#n339">339</a></p>
-<p id="n340" class="stm mis"><a href="#n340">340</a></p>
-<p id="n341" class="stm mis"><a href="#n341">341</a></p>
-<p id="n342" class="stm mis"><a href="#n342">342</a></p>
-<p id="n343" class="stm mis"><a href="#n343">343</a></p>
+<p id="n340" class="stm run hide_run"><a href="#n340">340</a></p>
+<p id="n341" class="stm run hide_run"><a href="#n341">341</a></p>
+<p id="n342" class="stm run hide_run"><a href="#n342">342</a></p>
+<p id="n343" class="stm run hide_run"><a href="#n343">343</a></p>
 <p id="n344" class="pln"><a href="#n344">344</a></p>
-<p id="n345" class="stm mis"><a href="#n345">345</a></p>
-<p id="n346" class="stm mis"><a href="#n346">346</a></p>
+<p id="n345" class="stm par run hide_run"><a href="#n345">345</a></p>
+<p id="n346" class="stm run hide_run"><a href="#n346">346</a></p>
 <p id="n347" class="pln"><a href="#n347">347</a></p>
 <p id="n348" class="stm mis"><a href="#n348">348</a></p>
 <p id="n349" class="pln"><a href="#n349">349</a></p>
@@ -950,20 +950,20 @@
 <p id="t330" class="stm run hide_run">&nbsp; &nbsp; <span class="op">@</span><span class="nam">_master_repo_locked</span><span class="strut">&nbsp;</span></p>
 <p id="t331" class="pln">&nbsp; &nbsp; <span class="key">def</span> <span class="nam">del_target</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">target</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
 <p id="t332" class="pln">&nbsp; &nbsp; &nbsp; &nbsp; <span class="com"># read target manifest</span><span class="strut">&nbsp;</span></p>
-<p id="t333" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">manifest_filename</span> <span class="op">=</span> <span class="nam">path</span><span class="op">.</span><span class="nam">join</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">_master_targets_dir</span><span class="op">,</span> <span class="nam">target</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
-<p id="t334" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; <span class="key">with</span> <span class="nam">open</span><span class="op">(</span><span class="nam">manifest_filename</span><span class="op">,</span> <span class="str">&#39;rb&#39;</span><span class="op">)</span> <span class="key">as</span> <span class="nam">f</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
-<p id="t335" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">manifest</span> <span class="op">=</span> <span class="nam">f</span><span class="op">.</span><span class="nam">read</span><span class="op">(</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
-<p id="t336" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">manifest_dgst</span> <span class="op">=</span> <span class="nam">hash_bytes</span><span class="op">(</span><span class="nam">manifest</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t333" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">manifest_filename</span> <span class="op">=</span> <span class="nam">path</span><span class="op">.</span><span class="nam">join</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">_master_targets_dir</span><span class="op">,</span> <span class="nam">target</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t334" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; <span class="key">with</span> <span class="nam">open</span><span class="op">(</span><span class="nam">manifest_filename</span><span class="op">,</span> <span class="str">&#39;rb&#39;</span><span class="op">)</span> <span class="key">as</span> <span class="nam">f</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
+<p id="t335" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">manifest</span> <span class="op">=</span> <span class="nam">f</span><span class="op">.</span><span class="nam">read</span><span class="op">(</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t336" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">manifest_dgst</span> <span class="op">=</span> <span class="nam">hash_bytes</span><span class="op">(</span><span class="nam">manifest</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t337" class="pln">&nbsp; &nbsp; &nbsp; &nbsp; <span class="com"># remove target manifest</span><span class="strut">&nbsp;</span></p>
-<p id="t338" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">remove</span><span class="op">(</span><span class="nam">manifest_filename</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t338" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">remove</span><span class="op">(</span><span class="nam">manifest_filename</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t339" class="pln">&nbsp; &nbsp; &nbsp; &nbsp; <span class="com"># remove consistent snapshot links for target</span><span class="strut">&nbsp;</span></p>
-<p id="t340" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; <span class="key">for</span> <span class="nam">f</span> <span class="key">in</span> <span class="nam">Repository</span><span class="op">.</span><span class="nam">get_filepaths_in_directory</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">_master_targets_dir</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
-<p id="t341" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">dirname</span><span class="op">,</span> <span class="nam">basename</span> <span class="op">=</span> <span class="nam">path</span><span class="op">.</span><span class="nam">split</span><span class="op">(</span><span class="nam">f</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
-<p id="t342" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="key">if</span> <span class="nam">basename</span><span class="op">[</span><span class="nam">_skip_consistent_target_digest</span><span class="op">(</span><span class="nam">basename</span><span class="op">)</span><span class="op">:</span><span class="op">]</span> <span class="op">==</span> <span class="nam">target</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
-<p id="t343" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">remove</span><span class="op">(</span><span class="nam">f</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t340" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; <span class="key">for</span> <span class="nam">f</span> <span class="key">in</span> <span class="nam">Repository</span><span class="op">.</span><span class="nam">get_filepaths_in_directory</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">_master_targets_dir</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
+<p id="t341" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">dirname</span><span class="op">,</span> <span class="nam">basename</span> <span class="op">=</span> <span class="nam">path</span><span class="op">.</span><span class="nam">split</span><span class="op">(</span><span class="nam">f</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t342" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="key">if</span> <span class="nam">basename</span><span class="op">[</span><span class="nam">_skip_consistent_target_digest</span><span class="op">(</span><span class="nam">basename</span><span class="op">)</span><span class="op">:</span><span class="op">]</span> <span class="op">==</span> <span class="nam">target</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
+<p id="t343" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">remove</span><span class="op">(</span><span class="nam">f</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t344" class="pln">&nbsp; &nbsp; &nbsp; &nbsp; <span class="com"># delete blobs manifest points to</span><span class="strut">&nbsp;</span></p>
-<p id="t345" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; <span class="key">for</span> <span class="nam">dgst</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_dxf</span><span class="op">.</span><span class="nam">get_alias</span><span class="op">(</span><span class="nam">manifest</span><span class="op">=</span><span class="nam">manifest</span><span class="op">,</span> <span class="nam">verify</span><span class="op">=</span><span class="nam">False</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
-<p id="t346" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">self</span><span class="op">.</span><span class="nam">_dxf</span><span class="op">.</span><span class="nam">del_blob</span><span class="op">(</span><span class="nam">dgst</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t345" class="stm par run hide_run"><span class="annotate" title="Line 345 was executed, but never jumped to line 348">345&#x202F;&#x219B;&#x202F;348 [?]</span>&nbsp; &nbsp; &nbsp; &nbsp; <span class="key">for</span> <span class="nam">dgst</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_dxf</span><span class="op">.</span><span class="nam">get_alias</span><span class="op">(</span><span class="nam">manifest</span><span class="op">=</span><span class="nam">manifest</span><span class="op">,</span> <span class="nam">verify</span><span class="op">=</span><span class="nam">False</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
+<p id="t346" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">self</span><span class="op">.</span><span class="nam">_dxf</span><span class="op">.</span><span class="nam">del_blob</span><span class="op">(</span><span class="nam">dgst</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t347" class="pln">&nbsp; &nbsp; &nbsp; &nbsp; <span class="com"># delete manifest blob</span><span class="strut">&nbsp;</span></p>
 <p id="t348" class="stm mis">&nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">self</span><span class="op">.</span><span class="nam">_dxf</span><span class="op">.</span><span class="nam">del_blob</span><span class="op">(</span><span class="nam">manifest_dgst</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t349" class="pln"><span class="strut">&nbsp;</span></p>
@@ -1174,7 +1174,7 @@
     <div class="content">
         <p>
             <a class="nav" href="index.html">&#xab; index</a> &nbsp; &nbsp; <a class="nav" href="https://coverage.readthedocs.org">coverage.py v4.0.3</a>,
-            created at 2015-12-29 21:49
+            created at 2015-12-29 22:01
         </p>
     </div>
 </div>
