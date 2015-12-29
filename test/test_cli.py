@@ -1,6 +1,7 @@
 import os
 import sys
 import hashlib
+import shutil
 import errno
 from StringIO import StringIO
 import pytest
@@ -71,7 +72,16 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
         dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
     if exists:
         for ex2 in ex.value.mirror_errors.values():
-            assert isinstance(ex2, tuf.CryptoError)
+            assert isinstance(ex2, tuf.ReplayedMetadataError)
+            assert ex2.metadata_role == 'timestamp'
+            assert ex2.previous_version == 2 # create=1, push=2
+            assert ex2.current_version == 6
+        # Because of test_reset_keys below, the copy's current metadata will
+        # have a higher version number than the newly-created and pushed master
+        # metadata. That will generate a ReplayedMetadata error.
+        dir_name = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current')
+        assert dir_name.startswith('/tmp/') # check what we're about to remove!
+        shutil.rmtree(dir_name)
     else:
         assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
     capsys.readouterr()
@@ -82,7 +92,7 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     with pytest.raises(tuf.CryptoError):
         assert dtuf.main.doit(['pull-metadata', pytest.repo, '-'], dtuf_main) == 0
     capsys.readouterr()
-    _pull_metadata_with_master_public_root_key(dtuf_main)
+    assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
     out, err = capsys.readouterr()
     assert sorted(out.split(os.linesep)) == \
         ([''] if exists else ['', 'foobar', 'hello', 'there'])
@@ -181,9 +191,66 @@ def test_auth(dtuf_main, capsys):
         assert out == ""
         assert err == ""
 
+def test_reset_keys(dtuf_main, capsys):
+    # create new non-root keys
+    test_create_root_key(dtuf_main)
+    # reset repository keys
+    environ = {
+        'DTUF_ROOT_KEY_PASSWORD': pytest.root_key_password,
+        'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
+        'DTUF_SNAPSHOT_KEY_PASSWORD': pytest.snapshot_key_password,
+        'DTUF_TIMESTAMP_KEY_PASSWORD': pytest.timestamp_key_password
+    }
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['reset-keys', pytest.repo], environ) == 0
+    # push metadata
+    test_push_metadata(dtuf_main)
+    # pull metadata
+    # this will fail even though we didn't change the root key because root.json
+    # has been updated (it stores the other public keys); unless we pass in
+    # the root public key, we don't update root.json
+    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+        dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
+    for ex2 in ex.value.mirror_errors.values():
+        assert isinstance(ex2, tuf.CryptoError)
+    capsys.readouterr()
+    # pull metadata again with public root key
+    assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == ""
+    # create new root key
+    test_create_root_key(dtuf_main)
+    # reset repository keys
+    environ = {
+        'DTUF_ROOT_KEY_PASSWORD': pytest.root_key_password,
+        'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
+        'DTUF_SNAPSHOT_KEY_PASSWORD': pytest.snapshot_key_password,
+        'DTUF_TIMESTAMP_KEY_PASSWORD': pytest.timestamp_key_password
+    }
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['reset-keys', pytest.repo], environ) == 0
+    # push metadata
+    test_push_metadata(dtuf_main)
+    # pull metadata
+    # this will fail because root.json has been updated; unless we pass in the
+    # root public key, we don't update root.json
+    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+        dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
+    for ex2 in ex.value.mirror_errors.values():
+        assert isinstance(ex2, tuf.CryptoError)
+    capsys.readouterr()
+    # pull metadata again with public root key
+    assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == ""
+
+
+
 # bad_args
 # not_found
-# reset_keys
 # del_target
 # put run_test target in Makefile back
 # progress
+# get coverage up
