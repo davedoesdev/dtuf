@@ -45,6 +45,7 @@ import os
 import sys
 import argparse
 import tqdm
+import tuf
 import dtuf
 import dxf.exceptions
 
@@ -129,9 +130,11 @@ def doit(args, environ):
     def _doit():
         # pylint: disable=too-many-branches,too-many-statements
         if args.op == 'auth':
-            print(dtuf_master.auth_by_password(environ['DTUF_USERNAME'],
-                                               environ['DTUF_PASSWORD'],
-                                               actions=args.args))
+            token = dtuf_master.auth_by_password(environ['DTUF_USERNAME'],
+                                                 environ['DTUF_PASSWORD'],
+                                                 actions=args.args)
+            if token:
+                print(token)
             return
 
         token = environ.get('DTUF_TOKEN')
@@ -239,6 +242,14 @@ def doit(args, environ):
         traceback.print_exc()
         import errno
         return errno.EACCES
+    except tuf.NoWorkingMirrorError as ex:
+        for ex2 in ex.mirror_errors.values():
+            if isinstance(ex2, dxf.exceptions.DXFUnauthorizedError):
+                import traceback
+                traceback.print_exc()
+                import errno
+                return errno.EACCES
+        raise
 
 def main():
     exit(doit(sys.argv[1:], os.environ))

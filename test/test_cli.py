@@ -1,11 +1,13 @@
 import os
 import sys
 import hashlib
+import errno
 from StringIO import StringIO
 import pytest
 import tuf
 import dtuf.main
 from os import path
+import dxf.exceptions
 
 def test_empty(dtuf_main, capsys):
     assert dtuf.main.doit(['list-repos'], dtuf_main) == 0
@@ -147,13 +149,41 @@ def test_list_repos(dtuf_main, capsys):
     assert out == pytest.repo + os.linesep
     assert err == ""
 
-#def test_auth(dtuf_main, capsys):
-
+def test_auth(dtuf_main, capsys):
+    if dtuf_main['DTUF_INSECURE'] == '1':
+        environ = {
+            'DTUF_USERNAME': pytest.username,
+            'DTUF_PASSWORD': pytest.password
+        }
+        environ.update(dtuf_main)
+        with pytest.raises(dxf.exceptions.DXFAuthInsecureError):
+            dtuf.main.doit(['auth', pytest.repo], environ)
+    elif dtuf_main['TEST_DO_TOKEN']:
+        assert dtuf.main.doit(['auth', pytest.repo, '*'], dtuf_main) == 0
+        token, err = capsys.readouterr()
+        assert token
+        assert err == ""
+        environ = {}
+        environ.update(dtuf_main)
+        del environ['DTUF_USERNAME']
+        del environ['DTUF_PASSWORD']
+        assert dtuf.main.doit(['blob-sizes', pytest.repo, 'hello'], environ) == errno.EACCES
+        out, err = capsys.readouterr()
+        assert out == ""
+        environ['DTUF_TOKEN'] = token.strip()
+        assert dtuf.main.doit(['blob-sizes', pytest.repo, 'hello'], environ) == 0
+        out, err = capsys.readouterr()
+        assert out == str(pytest.blob1_size) + os.linesep
+        assert err == ""
+    else:
+        assert dtuf.main.doit(['auth', pytest.repo], dtuf_main) == 0
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert err == ""
 
 # bad_args
 # not_found
 # reset_keys
 # del_target
 # put run_test target in Makefile back
-# auth
 # progress
