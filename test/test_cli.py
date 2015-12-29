@@ -65,9 +65,14 @@ def _pull_metadata_with_master_public_root_key(dtuf_main):
 
 def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     exists = _copy_metadata_exists(dtuf_main, 'root')
-
-    #pull with no args, check error
-
+    with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError) as ex:
+        dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
+    if exists:
+        for ex2 in ex.value.mirror_errors.values():
+            assert isinstance(ex2, tuf.CryptoError)
+    else:
+        assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
+    capsys.readouterr()
     class FakeStdin(object):
         def read(self):
             return pytest.dummy_root_pub_key
@@ -116,10 +121,39 @@ def test_pull_target(dtuf_main, capfd):
         _pull_target(dtuf_main, 'there', [pytest.blob2_hash], [pytest.blob2_size], get_info, capfd)
         _pull_target(dtuf_main, 'foobar', [pytest.blob1_hash, pytest.blob2_hash], [pytest.blob1_size, pytest.blob2_size], get_info, capfd)
 
+def test_blob_sizes(dtuf_main, capsys):
+    assert dtuf.main.doit(['blob-sizes', pytest.repo, 'hello', 'there', 'foobar'], dtuf_main) == 0
+    out, err = capsys.readouterr()
+    assert out == str(pytest.blob1_size) + os.linesep + \
+                  str(pytest.blob2_size) + os.linesep + \
+                  str(pytest.blob1_size) + os.linesep + \
+                  str(pytest.blob2_size) + os.linesep
+    assert err == ""
+
+def test_check_target(dtuf_main):
+    assert dtuf.main.doit(['check-target', pytest.repo, 'hello', pytest.blob1_file], dtuf_main) == 0
+    assert dtuf.main.doit(['check-target', pytest.repo, 'there', pytest.blob2_file], dtuf_main) == 0
+    assert dtuf.main.doit(['check-target', pytest.repo, 'foobar', pytest.blob1_file, pytest.blob2_file], dtuf_main) == 0
+
+def test_list_copy_targets(dtuf_main, capsys):
+    assert dtuf.main.doit(['list-copy-targets', pytest.repo], dtuf_main) == 0
+    out, err = capsys.readouterr()
+    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'there']
+    assert err == ""
+
+def test_list_repos(dtuf_main, capsys):
+    assert dtuf.main.doit(['list-repos'], dtuf_main) == 0
+    out, err = capsys.readouterr()
+    assert out == pytest.repo + os.linesep
+    assert err == ""
+
+#def test_auth(dtuf_main, capsys):
+
 
 # bad_args
 # not_found
 # reset_keys
 # del_target
 # put run_test target in Makefile back
-# list_repos
+# auth
+# progress
