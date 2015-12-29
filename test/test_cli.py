@@ -3,10 +3,12 @@ import sys
 import hashlib
 import shutil
 import errno
+import time
 from StringIO import StringIO
 import pytest
 import requests
 import tuf
+import tqdm
 import dtuf.main
 from os import path
 import dxf.exceptions
@@ -46,6 +48,44 @@ def test_push_target(dtuf_main):
     assert dtuf.main.doit(['push-target', pytest.repo, 'there', pytest.blob2_file], dtuf_main) == 0
     assert dtuf.main.doit(['push-target', pytest.repo, 'foobar', '@hello', pytest.blob2_file], dtuf_main) == 0
 
+def test_push_target_progress(dtuf_main, capfd):
+    environ = {'DTUF_PROGRESS': '1'}
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['push-target', pytest.repo, 'hello2', pytest.blob3_file], environ) == 0
+    _, err = capfd.readouterr()
+    assert pytest.blob3_hash[0:8] in err
+    assert " 0%" in err
+    assert " 100%" in err
+    assert " " + str(pytest.blob3_size) + "/" + str(pytest.blob3_size) in err
+    target_file = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'master', 'repository', 'targets', 'hello2')
+    target_dgst = dxf.hash_file(target_file)
+    target_size = path.getsize(target_file)
+    assert target_dgst[0:8] in err
+    assert " " + str(target_size) + "/" + str(target_size) in err
+
+def test_see_push_target_progress(dtuf_main, monkeypatch):
+    environ = {'DTUF_PROGRESS': '1'}
+    environ.update(dtuf_main)
+    orig_tqdm = tqdm.tqdm
+    def new_tqdm(*args, **kwargs):
+        tqdm_obj = orig_tqdm(*args, **kwargs)
+        class TQDM(object):
+            # pylint: disable=no-self-use
+            def update(self, n):
+                tqdm_obj.update(n)
+                time.sleep(0.025)
+            def close(self):
+                tqdm_obj.close()
+            @property
+            def n(self):
+                return tqdm_obj.n
+            @property
+            def total(self):
+                return tqdm_obj.total
+        return TQDM()
+    monkeypatch.setattr(tqdm, 'tqdm', new_tqdm)
+    assert dtuf.main.doit(['push-target', pytest.repo, 'hello2', pytest.blob4_file], environ) == 0
+
 def test_push_metadata(dtuf_main):
     environ = {
         'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
@@ -55,14 +95,15 @@ def test_push_metadata(dtuf_main):
     environ.update(dtuf_main)
     assert dtuf.main.doit(['push-metadata', pytest.repo], environ) == 0
 
+def _copy_metadata_exists(dtuf_main, metadata):
+    return path.exists(path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current', metadata + '.json'))
+
 def test_list_master_targets(dtuf_main, capsys):
     assert dtuf.main.doit(['list-master-targets', pytest.repo], dtuf_main) == 0
     out, err = capsys.readouterr()
-    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'there']
+    exists = _copy_metadata_exists(dtuf_main, 'root')
+    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'hello2', 'there']
     assert err == ""
-
-def _copy_metadata_exists(dtuf_main, metadata):
-    return path.exists(path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current', metadata + '.json'))
 
 def _pull_metadata_with_master_public_root_key(dtuf_main):
     return dtuf.main.doit(['pull-metadata', pytest.repo, path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'master', 'keys', 'root_key.pub')], dtuf_main)
@@ -96,7 +137,7 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
     out, err = capsys.readouterr()
     assert sorted(out.split(os.linesep)) == \
-        (['', 'hello'] if exists else ['', 'foobar', 'hello', 'there'])
+        (['', 'hello', 'hello2'] if exists else ['', 'foobar', 'hello', 'hello2', 'there'])
     assert err == ""
 
 def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, capfd):
@@ -151,7 +192,7 @@ def test_check_target(dtuf_main):
 def test_list_copy_targets(dtuf_main, capsys):
     assert dtuf.main.doit(['list-copy-targets', pytest.repo], dtuf_main) == 0
     out, err = capsys.readouterr()
-    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'there']
+    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'hello2', 'there']
     assert err == ""
 
 def test_list_repos(dtuf_main, capsys):
@@ -199,12 +240,12 @@ def test_del_target(dtuf_main, capsys):
     # target file should have been removed but targets not rebuilt until push
     assert dtuf.main.doit(['list-master-targets', pytest.repo], dtuf_main) == 0
     out, err = capsys.readouterr()
-    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'there']
+    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'hello2', 'there']
     assert err == ""
     test_push_metadata(dtuf_main)
     assert dtuf.main.doit(['list-master-targets', pytest.repo], dtuf_main) == 0
     out, err = capsys.readouterr()
-    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'there']
+    assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello2', 'there']
     assert err == ""
 
 def test_reset_keys(dtuf_main, capsys):
@@ -233,7 +274,7 @@ def test_reset_keys(dtuf_main, capsys):
     # pull metadata again with public root key
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
     out, err = capsys.readouterr()
-    assert out == ""
+    assert out == "hello2" + os.linesep
     assert err == ""
     # create new root key
     test_create_root_key(dtuf_main)
@@ -259,7 +300,7 @@ def test_reset_keys(dtuf_main, capsys):
     # pull metadata again with public root key
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
     out, err = capsys.readouterr()
-    assert out == ""
+    assert out == "hello2" + os.linesep
     assert err == ""
 
 def _num_args(dtuf_main, op, minimum, maximum, capsys):
