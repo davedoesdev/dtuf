@@ -169,6 +169,24 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
         (['', 'hello', 'hello2'] if exists else ['', 'foobar', 'hello', 'hello2', 'there'])
     assert err == ""
 
+def test_pull_metadata_progress(dtuf_main, capfd):
+    environ = {'DTUF_PROGRESS': '1'}
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['pull-metadata', pytest.repo], environ) == 0
+    _, err = capfd.readouterr()
+    assert " 0%" in err
+    assert " 100%" in err
+    metadata_file = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current', 'timestamp.json')
+    metadata_dgst = dxf.hash_file(metadata_file)
+    metadata_size = path.getsize(metadata_file)
+    assert metadata_dgst[0:8] in err
+    assert " " + str(metadata_size) + "/" + str(metadata_size) in err
+
+def test_see_pull_metadata_progress(dtuf_main):
+    environ = {'DTUF_PROGRESS': '1'}
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['pull-metadata', pytest.repo], environ) == 0
+
 def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, capfd):
     environ = {'DTUF_BLOB_INFO': '1'}
     environ.update(dtuf_main)
@@ -203,6 +221,26 @@ def test_pull_target(dtuf_main, capfd):
         _pull_target(dtuf_main, 'hello', [pytest.blob1_hash], [pytest.blob1_size], get_info, capfd)
         _pull_target(dtuf_main, 'there', [pytest.blob2_hash], [pytest.blob2_size], get_info, capfd)
         _pull_target(dtuf_main, 'foobar', [pytest.blob1_hash, pytest.blob2_hash], [pytest.blob1_size, pytest.blob2_size], get_info, capfd)
+
+def test_pull_target_progress(dtuf_main, capfd):
+    environ = {'DTUF_PROGRESS': '1'}
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['pull-target', pytest.repo, 'hello'], environ) == 0
+    _, err = capfd.readouterr()
+    assert pytest.blob1_hash[0:8] in err
+    assert " 0%" in err
+    assert " 100%" in err
+    assert " " + str(pytest.blob1_size) + "/" + str(pytest.blob1_size) in err
+
+def test_see_pull_target_progress(dtuf_main, monkeypatch):
+    environ = {'DTUF_PROGRESS': '1'}
+    environ.update(dtuf_main)
+    class FakeStdout(object):
+        # pylint: disable=no-self-use
+        def write(self, _):
+            time.sleep(0.05)
+    monkeypatch.setattr(sys, 'stdout', FakeStdout())
+    assert dtuf.main.doit(['pull-target', pytest.repo, 'hello'], environ) == 0
 
 def test_blob_sizes(dtuf_main, capsys):
     assert dtuf.main.doit(['blob-sizes', pytest.repo, 'hello', 'there', 'foobar'], dtuf_main) == 0
@@ -359,7 +397,6 @@ def test_bad_args(dtuf_main, capsys):
     _num_args(dtuf_main, 'list-copy-targets', None, 0, capsys)
 
 
-# progress
 # check writes to dtuf_repos in cwd if don't specify repos root
 # get coverage up
 # put run_test target in Makefile back
