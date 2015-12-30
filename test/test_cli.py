@@ -95,6 +95,35 @@ def test_push_metadata(dtuf_main):
     environ.update(dtuf_main)
     assert dtuf.main.doit(['push-metadata', pytest.repo], environ) == 0
 
+def test_push_metadata_progress(dtuf_main, capfd):
+    environ = {
+        'DTUF_PROGRESS': '1',
+        'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
+        'DTUF_SNAPSHOT_KEY_PASSWORD': pytest.snapshot_key_password,
+        'DTUF_TIMESTAMP_KEY_PASSWORD': pytest.timestamp_key_password
+    }
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['push-metadata', pytest.repo], environ) == 0
+    _, err = capfd.readouterr()
+    #assert pytest.blob3_hash[0:8] in err
+    assert " 0%" in err
+    assert " 100%" in err
+    metadata_file = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'master', 'repository', 'metadata.staged', 'timestamp.json')
+    metadata_dgst = dxf.hash_file(metadata_file)
+    metadata_size = path.getsize(metadata_file)
+    assert metadata_dgst[0:8] in err
+    assert " " + str(metadata_size) + "/" + str(metadata_size) in err
+
+def test_see_push_metadata_progress(dtuf_main):
+    environ = {
+        'DTUF_PROGRESS': '1',
+        'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
+        'DTUF_SNAPSHOT_KEY_PASSWORD': pytest.snapshot_key_password,
+        'DTUF_TIMESTAMP_KEY_PASSWORD': pytest.timestamp_key_password
+    }
+    environ.update(dtuf_main)
+    assert dtuf.main.doit(['push-metadata', pytest.repo], environ) == 0
+
 def _copy_metadata_exists(dtuf_main, metadata):
     return path.exists(path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current', metadata + '.json'))
 
@@ -116,8 +145,8 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
         for ex2 in ex.value.mirror_errors.values():
             assert isinstance(ex2, tuf.ReplayedMetadataError)
             assert ex2.metadata_role == 'timestamp'
-            assert ex2.previous_version == 2 # create=1, push=2
-            assert ex2.current_version == 7
+            assert ex2.previous_version == 4 # create=1, push=2
+            assert ex2.current_version == 9
         # Because of test_reset_keys below, the copy's current metadata will
         # have a higher version number than the newly-created and pushed master
         # metadata. That will generate a ReplayedMetadata error.
@@ -331,5 +360,6 @@ def test_bad_args(dtuf_main, capsys):
 
 
 # progress
-# put run_test target in Makefile back
+# check writes to dtuf_repos in cwd if don't specify repos root
 # get coverage up
+# put run_test target in Makefile back

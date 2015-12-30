@@ -166,7 +166,7 @@ class DTufCommon(DTufBase):
     # pylint: disable=too-many-arguments,super-init-not-called
     def __init__(self, host, repo, repos_root=None, auth=None, insecure=False):
         self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure)
-        self._repo_root = path.join(repos_root if repos_root else getcwd(), repo)
+        self._repo_root = path.join(repos_root if repos_root else path.join(getcwd(), 'dtuf_repos'), repo)
 
 # pylint: disable=too-many-instance-attributes
 class DTufMaster(DTufCommon):
