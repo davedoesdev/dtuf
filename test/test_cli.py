@@ -1,4 +1,6 @@
+# pylint: disable=no-member
 import os
+from os import path
 import sys
 import hashlib
 import shutil
@@ -10,7 +12,6 @@ import requests
 import tuf
 import tqdm
 import dtuf.main
-from os import path
 import dxf.exceptions
 
 def test_empty(dtuf_main, capsys):
@@ -130,7 +131,6 @@ def _copy_metadata_exists(dtuf_main, metadata):
 def test_list_master_targets(dtuf_main, capsys):
     assert dtuf.main.doit(['list-master-targets', pytest.repo], dtuf_main) == 0
     out, err = capsys.readouterr()
-    exists = _copy_metadata_exists(dtuf_main, 'root')
     assert sorted(out.split(os.linesep)) == ['', 'foobar', 'hello', 'hello2', 'there']
     assert err == ""
 
@@ -156,7 +156,9 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     else:
         assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
     capsys.readouterr()
+    # pylint: disable=too-few-public-methods
     class FakeStdin(object):
+        # pylint: disable=no-self-use
         def read(self):
             return pytest.dummy_root_pub_key
     monkeypatch.setattr(sys, 'stdin', FakeStdin())
@@ -187,10 +189,12 @@ def test_see_pull_metadata_progress(dtuf_main):
     environ.update(dtuf_main)
     assert dtuf.main.doit(['pull-metadata', pytest.repo], environ) == 0
 
+# pylint: disable=too-many-arguments
 def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, capfd):
     environ = {'DTUF_BLOB_INFO': '1'}
     environ.update(dtuf_main)
     assert dtuf.main.doit(['pull-target', pytest.repo, target], environ if get_info else dtuf_main) == 0
+    # pylint: disable=protected-access
     encoding = capfd._capture.out.tmpfile.encoding
     capfd._capture.out.tmpfile.encoding = None
     out, err = capfd.readouterr()
@@ -235,6 +239,7 @@ def test_pull_target_progress(dtuf_main, capfd):
 def test_see_pull_target_progress(dtuf_main, monkeypatch):
     environ = {'DTUF_PROGRESS': '1'}
     environ.update(dtuf_main)
+    # pylint: disable=too-few-public-methods
     class FakeStdout(object):
         # pylint: disable=no-self-use
         def write(self, _):

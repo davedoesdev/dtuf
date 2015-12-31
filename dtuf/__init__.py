@@ -294,6 +294,7 @@ class DTufMaster(DTufCommon):
                    timestamp_key_password=None):
         # Load repository object
         repository = load_repository(self._master_repo_dir)
+        #  pylint: disable=no-member
         # Remove keys
         _remove_keys(repository.root)
         _remove_keys(repository.targets)
@@ -338,7 +339,7 @@ class DTufMaster(DTufCommon):
         remove(manifest_filename)
         # remove consistent snapshot links for target
         for f in Repository.get_filepaths_in_directory(self._master_targets_dir):
-            dirname, basename = path.split(f)
+            _, basename = path.split(f)
             if basename[_skip_consistent_target_digest(basename):] == target:
                 remove(f)
         # delete blobs manifest points to
@@ -347,6 +348,7 @@ class DTufMaster(DTufCommon):
         # delete manifest blob
         self._dxf.del_blob(manifest_dgst)
 
+    # pylint: disable=too-many-locals
     @_master_repo_locked
     def push_metadata(self,
                       targets_key_password=None,

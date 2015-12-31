@@ -60,7 +60,7 @@ def pytest_namespace():
 
 @pytest.fixture(scope='module')
 def repo_dir(request):
-    dir_name = tempfile.mkdtemp() 
+    dir_name = tempfile.mkdtemp()
     def cleanup():
         # Be ultra cautious because we'll be doing rm -rf on this directory
         assert dir_name.startswith('/tmp/')
@@ -109,9 +109,11 @@ def _setup_fixture(request):
 
 _fixture_params = [(None, False), (_auth, False), (_auth, True)]
 
+# pylint: disable=redefined-outer-name
 @pytest.fixture(scope='module', params=_fixture_params)
 def dtuf_objs(repo_dir, request):
     auth, do_token = _setup_fixture(request)
+    # pylint: disable=too-few-public-methods
     class DTufObjs(object):
         def __init__(self):
             self.do_token = do_token

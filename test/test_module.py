@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 import hashlib
 import shutil
 from os import path
@@ -147,7 +148,7 @@ def _dummy_pull_target(dtuf_objs, target, n):
     hashlib.sha256 = sha256
     try:
         for it in dtuf_objs.copy.pull_target(target):
-            for chunk in it:
+            for _ in it:
                 pass
     finally:
         hashlib.sha256 = orig_sha256
@@ -205,6 +206,7 @@ def test_context_manager(dtuf_objs):
 
 def _auth(dtuf_objs, obj_type):
     obj = getattr(dtuf_objs, obj_type)
+    # pylint: disable=protected-access
     if obj._dxf._insecure:
         with pytest.raises(dxf.exceptions.DXFAuthInsecureError):
             obj.auth_by_password(pytest.username, pytest.password)
