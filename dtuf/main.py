@@ -73,6 +73,12 @@ for c in choices:
         sp.add_argument('repo')
         sp.add_argument('args', nargs='*')
 
+def access_denied():
+    import traceback
+    traceback.print_exc()
+    import errno
+    return errno.EACCES
+
 # pylint: disable=too-many-statements
 def doit(args, environ):
     if environ.get('DTUF_PROGRESS') == '1':
@@ -238,17 +244,11 @@ def doit(args, environ):
         _doit()
         return 0
     except dxf.exceptions.DXFUnauthorizedError:
-        import traceback
-        traceback.print_exc()
-        import errno
-        return errno.EACCES
+        return access_denied()
     except tuf.NoWorkingMirrorError as ex:
         for ex2 in ex.mirror_errors.values():
             if isinstance(ex2, dxf.exceptions.DXFUnauthorizedError):
-                import traceback
-                traceback.print_exc()
-                import errno
-                return errno.EACCES
+                return access_denied()
         raise
 
 def main():

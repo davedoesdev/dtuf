@@ -395,8 +395,3 @@ def test_bad_args(dtuf_main, capsys):
     _num_args(dtuf_main, 'pull-metadata', None, 1, capsys)
     _num_args(dtuf_main, 'check-target', 2, None, capsys)
     _num_args(dtuf_main, 'list-copy-targets', None, 0, capsys)
-
-
-# check writes to dtuf_repos in cwd if don't specify repos root
-# get coverage up
-# put run_test target in Makefile back
