@@ -6,7 +6,7 @@ import hashlib
 import shutil
 import errno
 import time
-from StringIO import StringIO
+from io import BytesIO
 import pytest
 import requests
 import tuf
@@ -154,7 +154,7 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
     else:
-        assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
+        assert str(ex.value) == 'No root of trust! Could not find the "root.json" file.'
     capsys.readouterr()
     # pylint: disable=too-few-public-methods
     class FakeStdin(object):
@@ -199,7 +199,7 @@ def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, ca
     capfd._capture.out.tmpfile.encoding = None
     out, err = capfd.readouterr()
     if get_info:
-        outs = StringIO(out)
+        outs = BytesIO(out)
         for i, size in enumerate(expected_sizes):
             assert outs.readline() == expected_dgsts[i].encode('utf-8') + b' ' + str(size).encode('utf-8') + b'\n'
             sha256 = hashlib.sha256()

@@ -318,14 +318,14 @@ class DTufMaster(DTufCommon):
             if filename_or_target.startswith('@'):
                 with open(path.join(self._master_targets_dir,
                                     filename_or_target[1:]), 'rb') as f:
-                    manifest = f.read()
+                    manifest = f.read().decode('utf-8')
                 dgsts += self._dxf.get_alias(manifest=manifest, verify=False)
             else:
                 dgsts.append(self._dxf.push_blob(filename_or_target, progress))
         manifest = self._dxf.make_unsigned_manifest(target, *dgsts)
         manifest_filename = path.join(self._master_targets_dir, target)
         with open(manifest_filename, 'wb') as f:
-            f.write(manifest)
+            f.write(manifest.encode('utf-8'))
         self._dxf.push_blob(manifest_filename, progress)
 
     @_master_repo_locked
@@ -343,7 +343,8 @@ class DTufMaster(DTufCommon):
             if basename[_skip_consistent_target_digest(basename):] == target:
                 remove(f)
         # delete blobs manifest points to
-        for dgst in self._dxf.get_alias(manifest=manifest, verify=False):
+        for dgst in self._dxf.get_alias(manifest=manifest.decode('utf-8'),
+                                        verify=False):
             self._dxf.del_blob(dgst)
         # delete manifest blob
         self._dxf.del_blob(manifest_dgst)
@@ -411,7 +412,7 @@ class DTufMaster(DTufCommon):
         timestamp_cs = hash_bytes(timestamp_data) + '.timestamp.json'
         files = [timestamp_cs]
         # parse timestamp data
-        timestamp = json.loads(timestamp_data)
+        timestamp = json.loads(timestamp_data.decode('utf-8'))
         # get snapshot prefix
         snapshot_cs = timestamp['signed']['meta']['snapshot.json']['hashes']['sha256'] + '.snapshot.json'
         files.append(snapshot_cs)
@@ -419,7 +420,7 @@ class DTufMaster(DTufCommon):
         with open(path.join(self._master_staged_dir, snapshot_cs), 'rb') as f:
             snapshot_data = f.read()
         # parse snapshot data
-        snapshot = json.loads(snapshot_data)
+        snapshot = json.loads(snapshot_data.decode('utf-8'))
         # get targets and root prefixes
         targets_cs = snapshot['signed']['meta']['targets.json']['hashes']['sha256'] + '.targets.json'
         files.append(targets_cs)
@@ -477,10 +478,11 @@ class DTufCopy(DTufCommon):
                 it, size = self._dxf.pull_blob(dgst, size=True)
                 write_with_progress(it, dgst, size, temp_file, progress)
                 metadata = temp_file.read()
-                metadata_signable = json.loads(metadata)
+                metadata_signable = json.loads(metadata.decode('utf-8'))
                 tuf.formats.check_signable_object_format(metadata_signable)
-                tuf.client.updater.Updater._ensure_not_expired.__func__(
-                    None, metadata_signable['signed'], 'root')
+                f = tuf.client.updater.Updater._ensure_not_expired
+                f = getattr(f, '__func__', f)
+                f(None, metadata_signable['signed'], 'root')
                 # This metadata is claiming to be root.json
                 # Get the keyid of the signature and use it to add the root
                 # public key to the keydb. Thus when we verify the signature
@@ -520,7 +522,7 @@ class DTufCopy(DTufCommon):
         tgt = updater.target(target)
         updater.download_target(tgt, self._copy_targets_dir)
         with open(path.join(self._copy_targets_dir, target), 'rb') as f:
-            manifest = f.read()
+            manifest = f.read().decode('utf-8')
         return self._dxf.get_alias(manifest=manifest, verify=False, sizes=sizes)
 
     def pull_target(self, target, digests_and_sizes=False):

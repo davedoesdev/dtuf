@@ -209,7 +209,7 @@ def doit(args, environ):
                     root_public_key = sys.stdin.read()
                 else:
                     with open(args.args[0], 'rb') as f:
-                        root_public_key = f.read()
+                        root_public_key = f.read().decode('utf-8')
             for name in dtuf_copy.pull_metadata(root_public_key, progress):
                 print(name)
 

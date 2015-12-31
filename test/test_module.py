@@ -84,7 +84,7 @@ def test_list_master_targets(dtuf_objs):
 
 def _pull_metadata_with_master_public_root_key(dtuf_objs):
     with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
-        return dtuf_objs.copy.pull_metadata(f.read())
+        return dtuf_objs.copy.pull_metadata(f.read().decode('utf-8'))
 
 def test_pull_metadata(dtuf_objs):
     exists = _copy_metadata_exists(dtuf_objs, 'root')
@@ -103,7 +103,7 @@ def test_pull_metadata(dtuf_objs):
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
     else:
-        assert ex.value.message == 'No root of trust! Could not find the "root.json" file.'
+        assert str(ex.value) == 'No root of trust! Could not find the "root.json" file.'
     with pytest.raises(tuf.CryptoError):
         dtuf_objs.copy.pull_metadata(pytest.dummy_root_pub_key)
     assert sorted(_pull_metadata_with_master_public_root_key(dtuf_objs)) == \

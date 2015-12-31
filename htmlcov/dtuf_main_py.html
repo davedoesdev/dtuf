@@ -538,7 +538,7 @@
 <p id="t209" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">root_public_key</span> <span class="op">=</span> <span class="nam">sys</span><span class="op">.</span><span class="nam">stdin</span><span class="op">.</span><span class="nam">read</span><span class="op">(</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t210" class="pln">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="key">else</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
 <p id="t211" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="key">with</span> <span class="nam">open</span><span class="op">(</span><span class="nam">args</span><span class="op">.</span><span class="nam">args</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="str">&#39;rb&#39;</span><span class="op">)</span> <span class="key">as</span> <span class="nam">f</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
-<p id="t212" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">root_public_key</span> <span class="op">=</span> <span class="nam">f</span><span class="op">.</span><span class="nam">read</span><span class="op">(</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t212" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="nam">root_public_key</span> <span class="op">=</span> <span class="nam">f</span><span class="op">.</span><span class="nam">read</span><span class="op">(</span><span class="op">)</span><span class="op">.</span><span class="nam">decode</span><span class="op">(</span><span class="str">&#39;utf-8&#39;</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t213" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="key">for</span> <span class="nam">name</span> <span class="key">in</span> <span class="nam">dtuf_copy</span><span class="op">.</span><span class="nam">pull_metadata</span><span class="op">(</span><span class="nam">root_public_key</span><span class="op">,</span> <span class="nam">progress</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
 <p id="t214" class="stm run hide_run">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="key">print</span><span class="op">(</span><span class="nam">name</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t215" class="pln"><span class="strut">&nbsp;</span></p>
@@ -592,7 +592,7 @@
     <div class="content">
         <p>
             <a class="nav" href="index.html">&#xab; index</a> &nbsp; &nbsp; <a class="nav" href="https://coverage.readthedocs.org">coverage.py v4.0.3</a>,
-            created at 2015-12-31 07:40
+            created at 2015-12-31 21:35
         </p>
     </div>
 </div>
