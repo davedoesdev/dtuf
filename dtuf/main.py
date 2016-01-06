@@ -6,20 +6,20 @@
 # dtuf create-metadata <repo>          create metadata for repo
 # dtuf reset-keys <repo>               reset repo keys
 
-# dtuf push-target <repo> @target <@target|file>...
+# dtuf push-target <repo> target <@target|file>...
 #                                      make a new target by uploading blobs
 #                                      from files or using blobs from existing
 #                                      targets
-# dtuf del-target <repo> @target...    delete blobs and targets pointing to them
+# dtuf del-target <repo> target...     delete blobs and targets pointing to them
 # dtuf push-metadata <repo>            update metadata and push it to remote
 # dtuf list-master-targets <repo>      list all targets in a repo
 
 # dtuf pull-metadata <repo> [<root-pubkey-file>|-]
 #                                      pull metadata from remote and print
 #                                      updated targets
-# dtuf pull-target <repo> @target...   download blobs to stdout
-# dtuf blob-sizes <repo> @target...    print sizes of blobs
-# dtuf check-target <repo> @target <file>...
+# dtuf pull-target <repo> target...    download blobs to stdout
+# dtuf blob-sizes <repo> target...     print sizes of blobs
+# dtuf check-target <repo> target <file>...
 #                                      check files are latest blobs for target
 # dtuf list-copy-targets <repo>        list all targets in a repo
 # dtuf list-repos                      list all repos (may not all be TUF)
@@ -35,7 +35,7 @@
 # pass repositories directory through DTUF_REPOSITORIES_ROOT
 # (have repo subdirs underneath and then master and copy subdirs under those)
 
-# DTUF_PROGRESS for progress bar on push-target, push-metadata, pull-metadata
+# DTUF_PROGRESS='1' for progress bar on push-target, push-metadata, pull-metadata, ='0' not to show it. Default is to show only if stderr is a terminal
 # and pull-target
 
 # DTUF_BLOB_INFO to prepend digest and size before blob for pull-target
@@ -81,7 +81,8 @@ def access_denied():
 
 # pylint: disable=too-many-statements
 def doit(args, environ):
-    if environ.get('DTUF_PROGRESS') == '1':
+    dtuf_progress = environ.get('DTUF_PROGRESS')
+    if dtuf_progress == '1' or (dtuf_progress != '0' and sys.stderr.isatty()):
         bars = {}
         def progress(dgst, chunk, size):
             if dgst not in bars:

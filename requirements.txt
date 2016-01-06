@@ -1,6 +1,7 @@
 dxf>=1.7.0
 fasteners>=0.14.1
 tqdm>=3.1.4
+cryptography>=1.1.2
 
 pylint>=1.5.1
 pytest>=2.8.3

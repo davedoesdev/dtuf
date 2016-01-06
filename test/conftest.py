@@ -1,4 +1,5 @@
 import os
+import logging
 import subprocess
 import time
 import tempfile
@@ -9,6 +10,8 @@ import tuf.keys
 import tuf.repository_lib
 import dtuf
 import dtuf.main
+
+tuf.log.set_console_log_level(logging.WARNING)
 
 # From https://pytest.org/latest/example/simple.html#making-test-result-information-available-in-fixtures
 # pylint: disable=no-member,unused-argument
