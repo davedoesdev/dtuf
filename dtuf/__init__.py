@@ -138,8 +138,8 @@ class DTufBase(object):
     def _wrap_auth(self, auth=None):
         return lambda dxf_obj, response: auth(self, response) if auth else None
 
-    def __init__(self, host, auth=None, insecure=False):
-        self._dxf = DXFBase(host, self._wrap_auth(auth), insecure)
+    def __init__(self, host, auth=None, insecure=False, auth_host=None):
+        self._dxf = DXFBase(host, self._wrap_auth(auth), insecure, auth_host)
 
     @property
     def token(self):
@@ -164,17 +164,20 @@ class DTufBase(object):
 
 class DTufCommon(DTufBase):
     # pylint: disable=too-many-arguments,super-init-not-called
-    def __init__(self, host, repo, repos_root=None, auth=None, insecure=False):
-        self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure)
+    def __init__(self, host, repo, repos_root=None,
+                 auth=None, insecure=False, auth_host=None):
+        self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure, auth_host)
         self._repo_root = path.join(repos_root if repos_root else path.join(getcwd(), 'dtuf_repos'), repo)
 
 # pylint: disable=too-many-instance-attributes
 class DTufMaster(DTufCommon):
     # pylint: disable=too-many-arguments
-    def __init__(self, host, repo, repos_root=None, auth=None, insecure=False,
+    def __init__(self, host, repo, repos_root=None,
+                 auth=None, insecure=False, auth_host=None,
                  root_lifetime=None, targets_lifetime=None,
                  snapshot_lifetime=None, timestamp_lifetime=None):
-        super(DTufMaster, self).__init__(host, repo, repos_root, auth, insecure)
+        super(DTufMaster, self).__init__(host, repo, repos_root,
+                                         auth, insecure, auth_host)
         self._master_dir = path.join(self._repo_root, 'master')
         self._master_repo_lock = fasteners.process_lock.InterProcessLock(
             path.join(self._master_dir, 'lock'))
@@ -439,8 +442,10 @@ class DTufMaster(DTufCommon):
 
 class DTufCopy(DTufCommon):
     # pylint: disable=too-many-arguments
-    def __init__(self, host, repo, repos_root=None, auth=None, insecure=False):
-        super(DTufCopy, self).__init__(host, repo, repos_root, auth, insecure)
+    def __init__(self, host, repo, repos_root=None,
+                 auth=None, insecure=False, auth_host=None):
+        super(DTufCopy, self).__init__(host, repo, repos_root,
+                                       auth, insecure, auth_host)
         self._copy_dir = path.join(self._repo_root, 'copy')
         self._copy_repo_lock = fasteners.process_lock.InterProcessLock(
             path.join(self._copy_dir, 'lock'))

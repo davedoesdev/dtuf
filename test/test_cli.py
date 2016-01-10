@@ -400,3 +400,12 @@ def test_bad_args(dtuf_main, capsys):
     _num_args(dtuf_main, 'pull-metadata', None, 1, capsys)
     _num_args(dtuf_main, 'check-target', 2, None, capsys)
     _num_args(dtuf_main, 'list-copy-targets', None, 0, capsys)
+
+def test_auth_host(dtuf_main):
+    if dtuf_main['TEST_DO_TOKEN']:
+        environ = {
+            'DTUF_AUTH_HOST': 'localhost:5002'
+        }
+        environ.update(dtuf_main)
+        with pytest.raises(requests.exceptions.ConnectionError):
+            dtuf.main.doit(['list-repos'], environ)

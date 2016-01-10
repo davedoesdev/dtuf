@@ -30,6 +30,9 @@
 
 # pass repo host through DTUF_HOST
 # to use http, set DTUF_INSECURE to something
+
+# to override token auth server, set DTUF_AUTH_HOST
+
 # pass token through DTUF_TOKEN
 
 # pass repositories directory through DTUF_REPOSITORIES_ROOT
@@ -109,7 +112,8 @@ def doit(args, environ):
     if args.op == 'list-repos':
         dtuf_base = dtuf.DTufBase(environ['DTUF_HOST'],
                                   auth,
-                                  environ.get('DTUF_INSECURE') == '1')
+                                  environ.get('DTUF_INSECURE') == '1',
+                                  environ.get('DTUF_AUTH_HOST'))
         dtuf_obj = dtuf_base
     elif args.op in ['auth',
                      'create-root-key',
@@ -124,14 +128,16 @@ def doit(args, environ):
                                       args.repo,
                                       environ.get('DTUF_REPOSITORIES_ROOT'),
                                       auth,
-                                      environ.get('DTUF_INSECURE') == '1')
+                                      environ.get('DTUF_INSECURE') == '1',
+                                      environ.get('DTUF_AUTH_HOST'))
         dtuf_obj = dtuf_master
     else:
         dtuf_copy = dtuf.DTufCopy(environ['DTUF_HOST'],
                                   args.repo,
                                   environ.get('DTUF_REPOSITORIES_ROOT'),
                                   auth,
-                                  environ.get('DTUF_INSECURE') == '1')
+                                  environ.get('DTUF_INSECURE') == '1',
+                                  environ.get('DTUF_AUTH_HOST'))
         dtuf_obj = dtuf_copy
 
     def _doit():
