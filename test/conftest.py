@@ -72,7 +72,7 @@ def repo_dir(request):
     return dir_name
 
 def _auth(dtuf_obj, response):
-    dtuf_obj.auth_by_password(pytest.username, pytest.password, response=response)
+    dtuf_obj.authenticate(pytest.username, pytest.password, response=response)
 
 def _setup_fixture(request):
     setattr(request.node, 'rep_failed', False)

@@ -16,7 +16,7 @@ setup(
     license='MIT',
     packages=['dtuf'],
     entry_points={'console_scripts': ['dtuf=dtuf.main:main']},
-    install_requires=['dxf>=1.9.1',
+    install_requires=['dxf>=2.0.0',
                       'fasteners>=0.14.1',
                       'tqdm>=3.1.4',
                       'cryptography>=1.1.2']

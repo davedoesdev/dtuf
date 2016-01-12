@@ -149,8 +149,10 @@ class DTufBase(object):
     def token(self, value):
         self._dxf.token = value
 
-    def auth_by_password(self, username, password, actions=None, response=None):
-        return self._dxf.auth_by_password(username, password, actions, response)
+    def authenticate(self,
+                     username=None, password=None,
+                     actions=None, response=None):
+        return self._dxf.authenticate(username, password, actions, response)
 
     def list_repos(self):
         return self._dxf.list_repos()

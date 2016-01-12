@@ -3,8 +3,8 @@ import hashlib
 import shutil
 from os import path
 import pytest
-import tuf
 import requests
+import tuf
 import dxf.exceptions
 import dtuf.exceptions
 
@@ -209,12 +209,12 @@ def _auth(dtuf_objs, obj_type):
     # pylint: disable=protected-access
     if obj._dxf._insecure:
         with pytest.raises(dxf.exceptions.DXFAuthInsecureError):
-            obj.auth_by_password(pytest.username, pytest.password)
+            obj.authenticate(pytest.username, pytest.password)
     elif dtuf_objs.do_token:
-        assert obj.auth_by_password(pytest.username, pytest.password, '*') == obj.token
+        assert obj.authenticate(pytest.username, pytest.password, '*') == obj.token
         assert obj.token
     else:
-        assert obj.auth_by_password(pytest.username, pytest.password) is None
+        assert obj.authenticate(pytest.username, pytest.password) is None
 
 def test_auth(dtuf_objs):
     _auth(dtuf_objs, 'master')

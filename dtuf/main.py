@@ -104,8 +104,7 @@ def doit(args, environ):
         # pylint: disable=redefined-outer-name
         username = environ.get('DTUF_USERNAME')
         password = environ.get('DTUF_PASSWORD')
-        if username and password:
-            dtuf_obj.auth_by_password(username, password, response=response)
+        dtuf_obj.authenticate(username, password, response=response)
 
     # pylint: disable=redefined-variable-type
     args = parser.parse_args(args)
@@ -143,9 +142,9 @@ def doit(args, environ):
     def _doit():
         # pylint: disable=too-many-branches,too-many-statements
         if args.op == 'auth':
-            token = dtuf_master.auth_by_password(environ['DTUF_USERNAME'],
-                                                 environ['DTUF_PASSWORD'],
-                                                 actions=args.args)
+            token = dtuf_master.authenticate(environ['DTUF_USERNAME'],
+                                             environ['DTUF_PASSWORD'],
+                                             actions=args.args)
             if token:
                 print(token)
             return
