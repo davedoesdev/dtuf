@@ -43,9 +43,13 @@
 
 # DTUF_BLOB_INFO to prepend digest and size before blob for pull-target
 
+# DTUF_FILE_LOG_LEVEL to control what goes to log file
+# DTUF_CONSOLE_LOG_LEVEL to control what goes to console
+
 # pylint: disable=wrong-import-position,wrong-import-order,superfluous-parens
 import os
 import sys
+import logging
 import argparse
 import tqdm
 import tuf
@@ -82,8 +86,14 @@ def access_denied():
     import errno
     return errno.EACCES
 
-# pylint: disable=too-many-statements
+# pylint: disable=too-many-statements,too-many-locals
 def doit(args, environ):
+    log_level = environ.get('DTUF_FILE_LOG_LEVEL', 'WARNING')
+    tuf.log.set_filehandler_log_level(getattr(logging, log_level))
+
+    log_level = environ.get('DTUF_CONSOLE_LOG_LEVEL', 'WARNING')
+    tuf.log.set_console_log_level(getattr(logging, log_level))
+
     dtuf_progress = environ.get('DTUF_PROGRESS')
     if dtuf_progress == '1' or (dtuf_progress != '0' and sys.stderr.isatty()):
         bars = {}
