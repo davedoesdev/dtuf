@@ -520,6 +520,7 @@ class DTufCopy(DTufCommon):
         updated_targets = updater.updated_targets(
             targets, self._copy_targets_dir)
         if path.isdir(self._copy_targets_dir):
+            # pylint: disable=redefined-variable-type
             targets = dict([(t['filepath'][1:], True) for t in targets])
             for t in listdir(self._copy_targets_dir):
                 if t not in targets:

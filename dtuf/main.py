@@ -46,6 +46,8 @@
 
 # DTUF_BLOB_INFO to prepend digest and size before blob for pull-target
 
+# DTUF_LOG_FILE to set the log file name (default dtuf.log in current directory,
+#               empty string to disable logging)
 # DTUF_FILE_LOG_LEVEL to control what goes to log file
 # DTUF_CONSOLE_LOG_LEVEL to control what goes to console
 
@@ -57,8 +59,6 @@ import argparse
 from datetime import timedelta
 import tqdm
 import pytimeparse
-import tuf
-import dtuf
 import dxf.exceptions
 
 choices = ['list-repos',
@@ -99,9 +99,17 @@ def get_lifetime(environ, role):
 
 # pylint: disable=too-many-statements,too-many-locals
 def doit(args, environ):
+    import tuf.conf
+    log_file = environ.get('DTUF_LOG_FILE', 'dtuf.log')
+    if log_file:
+        tuf.conf.LOG_FILENAME = log_file
+    else:
+        tuf.conf.ENABLE_FILE_LOGGING = False
+
+    import dtuf
+    import tuf.log
     log_level = environ.get('DTUF_FILE_LOG_LEVEL', 'WARNING')
     tuf.log.set_filehandler_log_level(getattr(logging, log_level))
-
     log_level = environ.get('DTUF_CONSOLE_LOG_LEVEL', 'WARNING')
     tuf.log.set_console_log_level(getattr(logging, log_level))
 

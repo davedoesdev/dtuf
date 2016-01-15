@@ -422,9 +422,7 @@ def test_bad_args(dtuf_main, capsys):
 
 def test_auth_host(dtuf_main):
     if dtuf_main['TEST_DO_TOKEN']:
-        environ = {
-            'DTUF_AUTH_HOST': 'localhost:5002'
-        }
+        environ = {'DTUF_AUTH_HOST': 'localhost:5002'}
         environ.update(dtuf_main)
         with pytest.raises(requests.exceptions.ConnectionError):
             dtuf.main.doit(['list-repos'], environ)
