@@ -28,6 +28,9 @@
 # DTUF_TARGETS_KEY_PASSWORD, DTUF_SNAPSHOT_KEY_PASSWORD and
 # DTUF_TIMESTAMP_KEY_PASSWORD
 
+# pass metadata lifetime through DTUF_ROOT_LIFETIME, DTUF_TARGETS_LIFETIME,
+# DTUF_SNAPSHOT_LIFETIME and DTUF_TIMESTAMP_LIFETIME
+
 # pass repo host through DTUF_HOST
 # to use http, set DTUF_INSECURE to something
 
@@ -51,7 +54,9 @@ import os
 import sys
 import logging
 import argparse
+from datetime import timedelta
 import tqdm
+import pytimeparse
 import tuf
 import dtuf
 import dxf.exceptions
@@ -85,6 +90,12 @@ def access_denied():
     traceback.print_exc()
     import errno
     return errno.EACCES
+
+def get_lifetime(environ, role):
+    lifetime = environ.get('DTUF_' + role + '_LIFETIME')
+    if lifetime is None:
+        return lifetime
+    return timedelta(seconds=pytimeparse.parse(lifetime))
 
 # pylint: disable=too-many-statements,too-many-locals
 def doit(args, environ):
@@ -138,7 +149,11 @@ def doit(args, environ):
                                       environ.get('DTUF_REPOSITORIES_ROOT'),
                                       auth,
                                       environ.get('DTUF_INSECURE') == '1',
-                                      environ.get('DTUF_AUTH_HOST'))
+                                      environ.get('DTUF_AUTH_HOST'),
+                                      get_lifetime(environ, 'ROOT'),
+                                      get_lifetime(environ, 'TARGETS'),
+                                      get_lifetime(environ, 'SNAPSHOT'),
+                                      get_lifetime(environ, 'TIMESTAMP'))
         dtuf_obj = dtuf_master
     else:
         dtuf_copy = dtuf.DTufCopy(environ['DTUF_HOST'],

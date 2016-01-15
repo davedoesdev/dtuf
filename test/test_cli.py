@@ -142,14 +142,14 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError) as ex:
         dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
     if exists:
+        # Because of test_reset_keys below, the copy's current metadata will
+        # have a higher version number than the newly-created and pushed master
+        # metadata. That will generate a ReplayedMetadata error.
         for ex2 in ex.value.mirror_errors.values():
             assert isinstance(ex2, tuf.ReplayedMetadataError)
             assert ex2.metadata_role == 'timestamp'
             assert ex2.previous_version == 4 # create=1, push=2
-            assert ex2.current_version == 9
-        # Because of test_reset_keys below, the copy's current metadata will
-        # have a higher version number than the newly-created and pushed master
-        # metadata. That will generate a ReplayedMetadata error.
+            assert ex2.current_version == 17
         dir_name = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
@@ -304,6 +304,25 @@ def test_auth(dtuf_main, capsys):
         out, err = capsys.readouterr()
         assert out == ""
         assert err == ""
+
+def test_lifetime(dtuf_main):
+    for role in ['TIMESTAMP', 'SNAPSHOT', 'TARGETS', 'ROOT']:
+        environ = {
+            'DTUF_ROOT_KEY_PASSWORD': pytest.root_key_password,
+            'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
+            'DTUF_SNAPSHOT_KEY_PASSWORD': pytest.snapshot_key_password,
+            'DTUF_TIMESTAMP_KEY_PASSWORD': pytest.timestamp_key_password,
+            'DTUF_' + role + '_LIFETIME': '1s'
+        }
+        environ.update(dtuf_main)
+        assert dtuf.main.doit(['reset-keys', pytest.repo], environ) == 0
+        test_push_metadata(environ)
+        time.sleep(2)
+        with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+            dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
+        for ex2 in ex.value.mirror_errors.values():
+            assert isinstance(ex2, tuf.ExpiredMetadataError)
+            assert str(ex2).startswith("Metadata u'" + role.lower() + "' expired")
 
 def test_del_target(dtuf_main, capsys):
     with pytest.raises(requests.exceptions.HTTPError) as ex:
