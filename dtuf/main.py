@@ -257,7 +257,8 @@ def doit(args, environ):
                 for it, dgst, size in dtuf_copy.pull_target(name, True):
                     if environ.get('DTUF_BLOB_INFO') == '1':
                         print(dgst + ' ' + str(size))
-                    dtuf.write_with_progress(it, dgst, size, sys.stdout, progress)
+                    # pylint: disable=protected-access
+                    dtuf._write_with_progress(it, dgst, size, sys.stdout, progress)
 
         elif args.op == 'blob-sizes':
             for name in args.args:

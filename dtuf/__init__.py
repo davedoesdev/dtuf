@@ -1,3 +1,7 @@
+"""
+Docker registry bindings for The Update Framework
+"""
+
 # pylint: disable=superfluous-parens, wrong-import-order
 
 try:
@@ -126,7 +130,7 @@ def _remove_keys(metadata):
     for keyid in tuf.roledb.get_roleinfo(metadata.rolename)['keyids']:
         metadata.remove_verification_key(tuf.keydb.get_key(keyid))
 
-def write_with_progress(it, dgst, size, out, progress):
+def _write_with_progress(it, dgst, size, out, progress):
     if progress:
         progress(dgst, b'', size)
     for chunk in it:
@@ -135,11 +139,26 @@ def write_with_progress(it, dgst, size, out, progress):
         out.write(chunk)
 
 class DTufBase(object):
-    def _wrap_auth(self, auth=None):
-        return lambda dxf_obj, response: auth(self, response) if auth else None
+    """
+    Class for communicating with a Docker v2 registry.
+    Contains only operations which aren't related to pushing and pulling data
+    using `The Update Framework <https://github.com/theupdateframework/tuf>`_.
 
+    Can act as a context manager. For each context entered, a new
+    `requests.Session <http://docs.python-requests.org/en/latest/user/advanced/#session-objects>`_
+    is obtained. Connections to the same host are shared by the session.
+    When the context exits, all the session's connections are closed.
+
+    If you don't use :class:`DTufBase` as a context manager, each request
+    uses an ephemeral session. If you don't read all the data from an iterator
+    returned by :meth:`DTufCopy.pull_target` then the underlying connection
+    won't be closed until Python garbage collects the iterator.
+    """
     def __init__(self, host, auth=None, insecure=False, auth_host=None):
         self._dxf = DXFBase(host, self._wrap_auth(auth), insecure, auth_host)
+
+    def _wrap_auth(self, auth=None):
+        return lambda dxf_obj, response: auth(self, response) if auth else None
 
     @property
     def token(self):
@@ -164,7 +183,7 @@ class DTufBase(object):
     def __exit__(self, *args):
         return self._dxf.__exit__(*args)
 
-class DTufCommon(DTufBase):
+class _DTufCommon(DTufBase):
     # pylint: disable=too-many-arguments,super-init-not-called
     def __init__(self, host, repo, repos_root=None,
                  auth=None, insecure=False, auth_host=None):
@@ -172,7 +191,7 @@ class DTufCommon(DTufBase):
         self._repo_root = path.join(repos_root if repos_root else path.join(getcwd(), 'dtuf_repos'), repo)
 
 # pylint: disable=too-many-instance-attributes
-class DTufMaster(DTufCommon):
+class DTufMaster(_DTufCommon):
     # pylint: disable=too-many-arguments
     def __init__(self, host, repo, repos_root=None,
                  auth=None, insecure=False, auth_host=None,
@@ -442,7 +461,7 @@ class DTufMaster(DTufCommon):
         #  pylint: disable=no-member
         return [p.lstrip(path.sep) for p in repository.targets.target_files]
 
-class DTufCopy(DTufCommon):
+class DTufCopy(_DTufCommon):
     # pylint: disable=too-many-arguments
     def __init__(self, host, repo, repos_root=None,
                  auth=None, insecure=False, auth_host=None):
@@ -483,7 +502,7 @@ class DTufCopy(DTufCommon):
             temp_file = tuf.util.TempFile()
             try:
                 it, size = self._dxf.pull_blob(dgst, size=True)
-                write_with_progress(it, dgst, size, temp_file, progress)
+                _write_with_progress(it, dgst, size, temp_file, progress)
                 metadata = temp_file.read()
                 metadata_signable = json.loads(metadata.decode('utf-8'))
                 tuf.formats.check_signable_object_format(metadata_signable)
