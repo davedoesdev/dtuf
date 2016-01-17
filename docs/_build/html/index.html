@@ -79,6 +79,71 @@ When the context exits, all the session&#8217;s connections are closed.</p>
 uses an ephemeral session. If you don&#8217;t read all the data from an iterator
 returned by <tt class="xref py py-meth docutils literal"><span class="pre">DTufCopy.pull_target()</span></tt> then the underlying connection
 won&#8217;t be closed until Python garbage collects the iterator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>host</strong> (<em>str</em>) &#8211; Host name of registry. Can contain port numbers. e.g. <tt class="docutils literal"><span class="pre">registry-1.docker.io</span></tt>, <tt class="docutils literal"><span class="pre">localhost:5000</span></tt>.</li>
+<li><strong>auth</strong> (<em>function(dtuf_obj, response)</em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><tt class="xref py py-class docutils literal"><span class="pre">DTufBase</span></tt></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><tt class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></tt></a> with a username, password and <tt class="docutils literal"><span class="pre">response</span></tt> before it returns.</li>
+<li><strong>insecure</strong> (<em>bool</em>) &#8211; Use HTTP instead of HTTPS (which is the default) when connecting to the registry.</li>
+<li><strong>auth_host</strong> (<em>str</em>) &#8211; Host to use for token authentication. If set, overrides host returned by then registry.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="dtuf.DTufBase.authenticate">
+<tt class="descname">authenticate</tt><big>(</big><em>username=None</em>, <em>password=None</em>, <em>actions=None</em>, <em>response=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufBase.authenticate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticate to the registry, using a username and password if supplied,
+otherwise as the anonymous user.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>username</strong> (<em>str</em>) &#8211; User name to authenticate as.</li>
+<li><strong>password</strong> (<em>str</em>) &#8211; User&#8217;s password.</li>
+<li><strong>actions</strong> (<em>list</em>) &#8211; If you know which types of operation you need to make on the registry, specify them here. Valid actions are <tt class="docutils literal"><span class="pre">pull</span></tt>, <tt class="docutils literal"><span class="pre">push</span></tt> and <tt class="docutils literal"><span class="pre">*</span></tt>.</li>
+<li><strong>response</strong> (<em>requests.Response</em>) &#8211; When the <tt class="docutils literal"><span class="pre">auth</span></tt> function you passed to <tt class="xref py py-class docutils literal"><span class="pre">DXFBase</span></tt>&#8216;s constructor is called, it is passed a HTTP response object. Pass it back to <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><tt class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></tt></a> to have it automatically detect which actions are required.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">str</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Authentication token, if the registry supports bearer tokens. Otherwise <tt class="docutils literal"><span class="pre">`None`</span></tt>, and HTTP Basic auth is used.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufBase.list_repos">
+<tt class="descname">list_repos</tt><big>(</big><big>)</big><a class="headerlink" href="#dtuf.DTufBase.list_repos" title="Permalink to this definition">¶</a></dt>
+<dd><p>List all repositories in the registry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">List of repository names.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="dtuf.DTufBase.token">
+<tt class="descname">token</tt><a class="headerlink" href="#dtuf.DTufBase.token" title="Permalink to this definition">¶</a></dt>
+<dd><p>str: Authentication token. This will be obtained automatically when
+you call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><tt class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></tt></a>. If you&#8217;ve obtained a token
+previously, you can also set it but be aware tokens expire quickly.</p>
+</dd></dl>
+
 </dd></dl>
 
 </div>

@@ -147,6 +147,19 @@ class DTufBase(object):
     won't be closed until Python garbage collects the iterator.
     """
     def __init__(self, host, auth=None, insecure=False, auth_host=None):
+        """
+        :param host: Host name of registry. Can contain port numbers. e.g. ``registry-1.docker.io``, ``localhost:5000``.
+        :type host: str
+
+        :param auth: Authentication function to be called whenever authentication to the registry is required. Receives the :class:`DTufBase` object and a HTTP response object. It should call :meth:`authenticate` with a username, password and ``response`` before it returns.
+        :type auth: function(dtuf_obj, response)
+
+        :param insecure: Use HTTP instead of HTTPS (which is the default) when connecting to the registry.
+        :type insecure: bool
+
+        :param auth_host: Host to use for token authentication. If set, overrides host returned by then registry.
+        :type auth_host: str
+        """
         self._dxf = DXFBase(host, self._wrap_auth(auth), insecure, auth_host)
 
     def _wrap_auth(self, auth=None):
@@ -154,6 +167,11 @@ class DTufBase(object):
 
     @property
     def token(self):
+        """
+        str: Authentication token. This will be obtained automatically when
+        you call :meth:`authenticate`. If you've obtained a token
+        previously, you can also set it but be aware tokens expire quickly.
+        """
         return self._dxf.token
 
     @token.setter
@@ -163,9 +181,34 @@ class DTufBase(object):
     def authenticate(self,
                      username=None, password=None,
                      actions=None, response=None):
+        """
+        Authenticate to the registry, using a username and password if supplied,
+        otherwise as the anonymous user.
+
+        :param username: User name to authenticate as.
+        :type username: str
+
+        :param password: User's password.
+        :type password: str
+
+        :param actions: If you know which types of operation you need to make on the registry, specify them here. Valid actions are ``pull``, ``push`` and ``*``.
+        :type actions: list
+
+        :param response: When the ``auth`` function you passed to :class:`DXFBase`'s constructor is called, it is passed a HTTP response object. Pass it back to :meth:`authenticate` to have it automatically detect which actions are required.
+        :type response: requests.Response
+
+        :rtype: str
+        :returns: Authentication token, if the registry supports bearer tokens. Otherwise ```None```, and HTTP Basic auth is used.
+        """
         return self._dxf.authenticate(username, password, actions, response)
 
     def list_repos(self):
+        """
+        List all repositories in the registry.
+
+        :rtype: list
+        :returns: List of repository names.
+        """
         return self._dxf.list_repos()
 
     def __enter__(self):
