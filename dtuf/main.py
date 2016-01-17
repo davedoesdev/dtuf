@@ -111,6 +111,8 @@ def doit(args, environ):
     log_level = environ.get('DTUF_FILE_LOG_LEVEL', 'WARNING')
     tuf.log.set_filehandler_log_level(getattr(logging, log_level))
     log_level = environ.get('DTUF_CONSOLE_LOG_LEVEL', 'WARNING')
+    # tuf.repository_tool calls tuf.log.add_console_handler
+    import tuf.repository_tool
     tuf.log.set_console_log_level(getattr(logging, log_level))
 
     dtuf_progress = environ.get('DTUF_PROGRESS')
