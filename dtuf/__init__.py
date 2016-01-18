@@ -20,6 +20,7 @@ import fasteners
 from dxf import DXFBase, DXF, hash_file, hash_bytes
 import dxf.exceptions
 from dtuf import exceptions
+import iso8601
 
 def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
     import tuf.util
@@ -198,7 +199,7 @@ class DTufBase(object):
         :type response: requests.Response
 
         :rtype: str
-        :returns: Authentication token, if the registry supports bearer tokens. Otherwise ```None```, and HTTP Basic auth is used.
+        :returns: Authentication token, if the registry supports bearer tokens. Otherwise ``None``, and HTTP Basic auth is used.
         """
         return self._dxf.authenticate(username, password, actions, response)
 
@@ -227,11 +228,47 @@ class _DTufCommon(DTufBase):
 
 # pylint: disable=too-many-instance-attributes
 class DTufMaster(_DTufCommon):
+    """
+    Class for creating, updating and publishing data using
+    `The Update Framework <https://github.com/theupdateframework/tuf>`_ (TUF)
+    and a Docker registry.
+    """
     # pylint: disable=too-many-arguments
     def __init__(self, host, repo, repos_root=None,
                  auth=None, insecure=False, auth_host=None,
                  root_lifetime=None, targets_lifetime=None,
                  snapshot_lifetime=None, timestamp_lifetime=None):
+        """
+        :param host: Host name of registry. Can contain port numbers. e.g. ``registry-1.docker.io``, ``localhost:5000``.
+        :type host: str
+
+        :param repo: Name of the repository to access on the registry. Typically this is of the form ``username/reponame`` but for your own registries you don't actually have to stick to that. The repository is used to store data and TUF metadata describing the data.
+        :type repo: str
+
+        :param repos_root: Directory under which to store TUF metadata. Note that the value of ``repo`` and the literal string ``master`` are appended to this directory name before storing the metadata. Defaults to ``dtuf_repos`` in the current working directory.
+        :type repos_root: str
+
+        :param auth: Authentication function to be called whenever authentication to the registry is required. Receives the :class:`DTufBase` object and a HTTP response object. It should call :meth:`authenticate` with a username, password and ``response`` before it returns.
+        :type auth: function(dtuf_obj, response)
+
+        :param insecure: Use HTTP instead of HTTPS (which is the default) when connecting to the registry.
+        :type insecure: bool
+
+        :param auth_host: Host to use for token authentication. If set, overrides host returned by then registry.
+        :type auth_host: str
+
+        :param root_lifetime: Lifetime of the TUF `root metadata <https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235>`_. After this time expires, you'll need to call :meth:`reset_keys` to re-sign the metadata and then :meth:`push_metadata` to publish it again. Defaults to ``tuf.repository_tool.ROOT_EXPIRATION`` (1 year).
+        :type root_lifetime: datetime.timedelta
+
+        :param targets_lifetime: Lifetime of the TUF `targets metadata <https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L246>`_. After this time expires, you'll need to call :meth:`push_metadata` to re-sign the metadata. Defaults to ``tuf.repository_tool.TARGETS_EXPIRATION`` (3 months).
+        :type targets_lifetime: datetime.timedelta
+
+        :param snapshot_lifetime: Lifetime of the TUF `snapshot metadata <https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L268>`_. After this time expires, you'll need to call :meth:`push_metadata` to re-sign the metadata. Defaults to ``tuf.repository_tool.SNAPSHOT_EXPIRATION`` (1 week).
+        :type snapshot_lifetime: datetime.timedelta
+
+        :param timestamp_lifetime: Lifetime of the TUF `timestamp metadata <https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L276>`_. After this time expires, you'll need to call :meth:`push_metadata` to re-sign the metadata. Defaults to ``tuf.repository_tool.TIMESTAMP_EXPIRATION`` (1 day).
+        :type timestamp_lifetime: datetime.timedelta
+        """
         super(DTufMaster, self).__init__(host, repo, repos_root,
                                          auth, insecure, auth_host)
         self._master_dir = path.join(self._repo_root, 'master')
@@ -512,6 +549,17 @@ class DTufMaster(_DTufCommon):
         #  pylint: disable=no-member
         return [p.lstrip(path.sep) for p in repository.targets.target_files]
 
+    @_master_repo_locked
+    def get_expirations(self):
+        from tuf.repository_tool import load_repository
+        repository = load_repository(self._master_repo_dir)
+        return {
+            'root': repository.root.expiration,
+            'targets': repository.targets.expiration,
+            'snapshot': repository.snapshot.expiration,
+            'timestamp': repository.timestamp.expiration
+        }
+
 class DTufCopy(_DTufCommon):
     # pylint: disable=too-many-arguments
     def __init__(self, host, repo, repos_root=None,
@@ -639,3 +687,16 @@ class DTufCopy(_DTufCommon):
         updater = tuf.client.updater.Updater('updater',
                                              self._repository_mirrors)
         return [t['filepath'][1:] for t in updater.all_targets()]
+
+    @_copy_repo_locked
+    def get_expirations(self):
+        import tuf.client.updater
+        updater = tuf.client.updater.Updater('updater',
+                                             self._repository_mirrors)
+        metadata = updater.metadata['current']
+        return {
+            'root': iso8601.parse_date(metadata['root']['expires']),
+            'targets': iso8601.parse_date(metadata['targets']['expires']),
+            'snapshot': iso8601.parse_date(metadata['snapshot']['expires']),
+            'timestamp': iso8601.parse_date(metadata['timestamp']['expires'])
+        }

@@ -13,6 +13,20 @@ import tuf
 import tqdm
 import dtuf.main
 import dxf.exceptions
+import iso8601
+from datetime import datetime, timedelta, tzinfo
+
+class _UTC(tzinfo):
+    def utcoffset(self, dt):
+        return timedelta(0)
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return timedelta(0)
+
+utc = _UTC()
 
 def test_empty(dtuf_main, capsys):
     assert dtuf.main.doit(['list-repos'], dtuf_main) == 0
@@ -305,7 +319,7 @@ def test_auth(dtuf_main, capsys):
         assert out == ""
         assert err == ""
 
-def test_lifetime(dtuf_main):
+def test_lifetime(dtuf_main, capsys):
     for role in ['TIMESTAMP', 'SNAPSHOT', 'TARGETS', 'ROOT']:
         environ = {
             'DTUF_ROOT_KEY_PASSWORD': pytest.root_key_password,
@@ -323,6 +337,22 @@ def test_lifetime(dtuf_main):
         for ex2 in ex.value.mirror_errors.values():
             assert isinstance(ex2, tuf.ExpiredMetadataError)
             assert str(ex2).startswith("Metadata u'" + role.lower() + "' expired")
+        capsys.readouterr()
+        dtuf.main.doit(['get-master-expirations', pytest.repo], dtuf_main)
+        out, err = capsys.readouterr()
+        assert err == ""
+        e = {}
+        for l in out.split(os.linesep):
+            if (l):
+                f = l.split(': ')
+                e[f[0]] = iso8601.parse_date(f[1])
+        assert len(e) == 4
+        now = datetime.now(utc)
+        for r in ['timestamp', 'snapshot', 'targets', 'root']:
+            if r.upper() == role:
+                assert e[r] < now
+            else:
+                assert e[r] > now
 
 def test_del_target(dtuf_main, capsys):
     with pytest.raises(requests.exceptions.HTTPError) as ex:
@@ -393,6 +423,18 @@ def test_reset_keys(dtuf_main, capsys):
     out, err = capsys.readouterr()
     assert out == "hello2" + os.linesep
     assert err == ""
+    dtuf.main.doit(['get-copy-expirations', pytest.repo], dtuf_main)
+    out, err = capsys.readouterr()
+    assert err == ""
+    e = {}
+    for l in out.split(os.linesep):
+        if (l):
+            f = l.split(': ')
+            e[f[0]] = iso8601.parse_date(f[1])
+    assert len(e) == 4
+    now = datetime.now(utc)
+    for r in ['timestamp', 'snapshot', 'targets', 'root']:
+        assert e[r] > now
 
 def _num_args(dtuf_main, op, minimum, maximum, capsys):
     if minimum is not None:
@@ -416,9 +458,11 @@ def test_bad_args(dtuf_main, capsys):
     _num_args(dtuf_main, 'push-target', 2, None, capsys)
     _num_args(dtuf_main, 'push-metadata', None, 0, capsys)
     _num_args(dtuf_main, 'list-master-targets', None, 0, capsys)
+    _num_args(dtuf_main, 'get-master-expirations', None, 0, capsys)
     _num_args(dtuf_main, 'pull-metadata', None, 1, capsys)
     _num_args(dtuf_main, 'check-target', 2, None, capsys)
     _num_args(dtuf_main, 'list-copy-targets', None, 0, capsys)
+    _num_args(dtuf_main, 'get-copy-expirations', None, 0, capsys)
 
 def test_auth_host(dtuf_main):
     if dtuf_main['TEST_DO_TOKEN']:

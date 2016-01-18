@@ -55,8 +55,8 @@
 <tr class="row-odd"><td><a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><tt class="xref py py-obj docutils literal"><span class="pre">dtuf.DTufBase</span></tt></a>(host[,&nbsp;auth,&nbsp;insecure,&nbsp;auth_host])</td>
 <td>Class for communicating with a Docker v2 registry.</td>
 </tr>
-<tr class="row-even"><td><tt class="xref py py-obj docutils literal"><span class="pre">dtuf.DTufMaster</span></tt>(host,&nbsp;repo[,&nbsp;repos_root,&nbsp;...])</td>
-<td></td>
+<tr class="row-even"><td><a class="reference internal" href="#dtuf.DTufMaster" title="dtuf.DTufMaster"><tt class="xref py py-obj docutils literal"><span class="pre">dtuf.DTufMaster</span></tt></a>(host,&nbsp;repo[,&nbsp;repos_root,&nbsp;...])</td>
+<td>Class for creating, updating and publishing data using <a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a> (TUF) and a Docker registry.</td>
 </tr>
 <tr class="row-odd"><td><tt class="xref py py-obj docutils literal"><span class="pre">dtuf.DTufCopy</span></tt>(host,&nbsp;repo[,&nbsp;repos_root,&nbsp;...])</td>
 <td></td>
@@ -113,7 +113,7 @@ otherwise as the anonymous user.</p>
 <tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">str</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Authentication token, if the registry supports bearer tokens. Otherwise <tt class="docutils literal"><span class="pre">`None`</span></tt>, and HTTP Basic auth is used.</p>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Authentication token, if the registry supports bearer tokens. Otherwise <tt class="docutils literal"><span class="pre">None</span></tt>, and HTTP Basic auth is used.</p>
 </td>
 </tr>
 </tbody>
@@ -144,6 +144,35 @@ you call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title=
 previously, you can also set it but be aware tokens expire quickly.</p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="class">
+<dt id="dtuf.DTufMaster">
+<em class="property">class </em><tt class="descclassname">dtuf.</tt><tt class="descname">DTufMaster</tt><big>(</big><em>host</em>, <em>repo</em>, <em>repos_root=None</em>, <em>auth=None</em>, <em>insecure=False</em>, <em>auth_host=None</em>, <em>root_lifetime=None</em>, <em>targets_lifetime=None</em>, <em>snapshot_lifetime=None</em>, <em>timestamp_lifetime=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">dtuf._DTufCommon</span></tt></p>
+<p>Class for creating, updating and publishing data using
+<a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a> (TUF)
+and a Docker registry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>host</strong> (<em>str</em>) &#8211; Host name of registry. Can contain port numbers. e.g. <tt class="docutils literal"><span class="pre">registry-1.docker.io</span></tt>, <tt class="docutils literal"><span class="pre">localhost:5000</span></tt>.</li>
+<li><strong>repo</strong> (<em>str</em>) &#8211; Name of the repository to access on the registry. Typically this is of the form <tt class="docutils literal"><span class="pre">username/reponame</span></tt> but for your own registries you don&#8217;t actually have to stick to that. The repository is used to store data and TUF metadata describing the data.</li>
+<li><strong>repos_root</strong> (<em>str</em>) &#8211; Directory under which to store TUF metadata. Note that the value of <tt class="docutils literal"><span class="pre">repo</span></tt> and the literal string <tt class="docutils literal"><span class="pre">master</span></tt> are appended to this directory name before storing the metadata. Defaults to <tt class="docutils literal"><span class="pre">dtuf_repos</span></tt> in the current working directory.</li>
+<li><strong>auth</strong> (<em>function(dtuf_obj, response)</em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><tt class="xref py py-class docutils literal"><span class="pre">DTufBase</span></tt></a> object and a HTTP response object. It should call <tt class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></tt> with a username, password and <tt class="docutils literal"><span class="pre">response</span></tt> before it returns.</li>
+<li><strong>insecure</strong> (<em>bool</em>) &#8211; Use HTTP instead of HTTPS (which is the default) when connecting to the registry.</li>
+<li><strong>auth_host</strong> (<em>str</em>) &#8211; Host to use for token authentication. If set, overrides host returned by then registry.</li>
+<li><strong>root_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235">root metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt> to re-sign the metadata and then <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to publish it again. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.ROOT_EXPIRATION</span></tt> (1 year).</li>
+<li><strong>targets_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L246">targets metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.TARGETS_EXPIRATION</span></tt> (3 months).</li>
+<li><strong>snapshot_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L268">snapshot metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.SNAPSHOT_EXPIRATION</span></tt> (1 week).</li>
+<li><strong>timestamp_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L276">timestamp metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.TIMESTAMP_EXPIRATION</span></tt> (1 day).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>

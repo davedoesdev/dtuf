@@ -13,6 +13,7 @@
 # dtuf del-target <repo> target...     delete blobs and targets pointing to them
 # dtuf push-metadata <repo>            update metadata and push it to remote
 # dtuf list-master-targets <repo>      list all targets in a repo
+# dtuf get-master-expirations <repo>   show metadata expiry dates
 
 # dtuf pull-metadata <repo> [<root-pubkey-file>|-]
 #                                      pull metadata from remote and print
@@ -22,6 +23,7 @@
 # dtuf check-target <repo> target <file>...
 #                                      check files are latest blobs for target
 # dtuf list-copy-targets <repo>        list all targets in a repo
+# dtuf get-copy-expirations <repo>     show metadata expiry dates
 # dtuf list-repos                      list all repos (may not all be TUF)
 
 # pass private key password through DTUF_ROOT_KEY_PASSWORD,
@@ -71,11 +73,13 @@ choices = ['list-repos',
            'del-target',
            'push-metadata',
            'list-master-targets',
+           'get-master-expirations',
            'pull-metadata',
            'pull-target',
            'blob-sizes',
            'check-target',
-           'list-copy-targets']
+           'list-copy-targets',
+           'get-copy-expirations']
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='op')
@@ -153,7 +157,8 @@ def doit(args, environ):
                      'push-target',
                      'del-target',
                      'push-metadata',
-                     'list-master-targets']:
+                     'list-master-targets',
+                     'get-master-expirations']:
         dtuf_master = dtuf.DTufMaster(environ['DTUF_HOST'],
                                       args.repo,
                                       environ.get('DTUF_REPOSITORIES_ROOT'),
@@ -241,6 +246,12 @@ def doit(args, environ):
             for name in dtuf_master.list_targets():
                 print(name)
 
+        elif args.op == 'get-master-expirations':
+            if len(args.args) > 0:
+                parser.error('too many arguments')
+            for role, expiry in dtuf_master.get_expirations().items():
+                print(role + ': ' + expiry.isoformat())
+
         elif args.op == 'pull-metadata':
             if len(args.args) > 1:
                 parser.error('too many arguments')
@@ -277,6 +288,12 @@ def doit(args, environ):
                 parser.error('too many arguments')
             for name in dtuf_copy.list_targets():
                 print(name)
+
+        elif args.op == 'get-copy-expirations':
+            if len(args.args) > 0:
+                parser.error('too many arguments')
+            for role, expiry in dtuf_copy.get_expirations().items():
+                print(role + ': ' + expiry.isoformat())
 
         elif args.op == 'list-repos':
             for name in dtuf_base.list_repos():
