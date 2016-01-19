@@ -56,7 +56,7 @@
 <td>Class for communicating with a Docker v2 registry.</td>
 </tr>
 <tr class="row-even"><td><a class="reference internal" href="#dtuf.DTufMaster" title="dtuf.DTufMaster"><tt class="xref py py-obj docutils literal"><span class="pre">dtuf.DTufMaster</span></tt></a>(host,&nbsp;repo[,&nbsp;repos_root,&nbsp;...])</td>
-<td>Class for creating, updating and publishing data using <a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a> (TUF) and a Docker registry.</td>
+<td>Class for creating, updating and publishing data to repositories in a Docker registry using <a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a> (TUF).</td>
 </tr>
 <tr class="row-odd"><td><tt class="xref py py-obj docutils literal"><span class="pre">dtuf.DTufCopy</span></tt>(host,&nbsp;repo[,&nbsp;repos_root,&nbsp;...])</td>
 <td></td>
@@ -70,7 +70,8 @@
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
 <p>Class for communicating with a Docker v2 registry.
 Contains only operations which aren&#8217;t related to pushing and pulling data
-using <a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a>.</p>
+to repositories in the registry using
+<a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a>.</p>
 <p>Can act as a context manager. For each context entered, a new
 <a class="reference external" href="http://docs.python-requests.org/en/latest/user/advanced/#session-objects">requests.Session</a>
 is obtained. Connections to the same host are shared by the session.
@@ -150,9 +151,9 @@ previously, you can also set it but be aware tokens expire quickly.</p>
 <dt id="dtuf.DTufMaster">
 <em class="property">class </em><tt class="descclassname">dtuf.</tt><tt class="descname">DTufMaster</tt><big>(</big><em>host</em>, <em>repo</em>, <em>repos_root=None</em>, <em>auth=None</em>, <em>insecure=False</em>, <em>auth_host=None</em>, <em>root_lifetime=None</em>, <em>targets_lifetime=None</em>, <em>snapshot_lifetime=None</em>, <em>timestamp_lifetime=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">dtuf._DTufCommon</span></tt></p>
-<p>Class for creating, updating and publishing data using
-<a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a> (TUF)
-and a Docker registry.</p>
+<p>Class for creating, updating and publishing data to repositories in a
+Docker registry using
+<a class="reference external" href="https://github.com/theupdateframework/tuf">The Update Framework</a> (TUF).</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -164,7 +165,7 @@ and a Docker registry.</p>
 <li><strong>auth</strong> (<em>function(dtuf_obj, response)</em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><tt class="xref py py-class docutils literal"><span class="pre">DTufBase</span></tt></a> object and a HTTP response object. It should call <tt class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></tt> with a username, password and <tt class="docutils literal"><span class="pre">response</span></tt> before it returns.</li>
 <li><strong>insecure</strong> (<em>bool</em>) &#8211; Use HTTP instead of HTTPS (which is the default) when connecting to the registry.</li>
 <li><strong>auth_host</strong> (<em>str</em>) &#8211; Host to use for token authentication. If set, overrides host returned by then registry.</li>
-<li><strong>root_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235">root metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt> to re-sign the metadata and then <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to publish it again. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.ROOT_EXPIRATION</span></tt> (1 year).</li>
+<li><strong>root_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235">root metadata</a>. After this time expires, you&#8217;ll need to call <a class="reference internal" href="#dtuf.DTufMaster.reset_keys" title="dtuf.DTufMaster.reset_keys"><tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt></a> to re-sign the metadata and then <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to publish it again. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.ROOT_EXPIRATION</span></tt> (1 year).</li>
 <li><strong>targets_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L246">targets metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.TARGETS_EXPIRATION</span></tt> (3 months).</li>
 <li><strong>snapshot_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L268">snapshot metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.SNAPSHOT_EXPIRATION</span></tt> (1 week).</li>
 <li><strong>timestamp_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L276">timestamp metadata</a>. After this time expires, you&#8217;ll need to call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.TIMESTAMP_EXPIRATION</span></tt> (1 day).</li>
@@ -173,6 +174,129 @@ and a Docker registry.</p>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="dtuf.DTufMaster.create_metadata">
+<tt class="descname">create_metadata</tt><big>(</big><em>root_key_password=None</em>, <em>targets_key_password=None</em>, <em>snapshot_key_password=None</em>, <em>timestamp_key_password=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster.create_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create and sign the TUF metadata for the repository.</p>
+<p>You only need to call this once for each repository, and the
+repository&#8217;s root and metadata private keys must be available.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>root_key_password</strong> &#8211; Password to use for decrypting the TUF root private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>targets_key_password</strong> &#8211; Password to use for decrypting the TUF targets private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>snapshot_key_password</strong> &#8211; Password to use for decrypting the TUF snapshot private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>timestamp_key_password</strong> &#8211; Password to use for decrypting the TUF timestamp private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufMaster.create_metadata_keys">
+<tt class="descname">create_metadata_keys</tt><big>(</big><em>targets_key_password=None</em>, <em>snapshot_key_password=None</em>, <em>timestamp_key_password=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster.create_metadata_keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create TUF metadata keypairs for the repository.</p>
+<p>The keys are written to the <tt class="docutils literal"><span class="pre">&lt;repos_root&gt;/&lt;repo&gt;/master/keys</span></tt> directory. The public keys have a <tt class="docutils literal"><span class="pre">.pub</span></tt> extension.</p>
+<p>You can move the private keys offline once you&#8217;ve called <a class="reference internal" href="#dtuf.DTufMaster.create_metadata" title="dtuf.DTufMaster.create_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">create_metadata()</span></tt></a> but you&#8217;ll need them again when you call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt> to publish the repository.</p>
+<p>You don&#8217;t need to give out the metadata public keys since they&#8217;re published as part of the repository.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>targets_key_password</strong> &#8211; Password to use for encrypting the TUF targets private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>snapshot_key_password</strong> &#8211; Password to use for encrypting the TUF snapshot private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>timestamp_key_password</strong> &#8211; Password to use for encrypting the TUF timestamp private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufMaster.create_root_key">
+<tt class="descname">create_root_key</tt><big>(</big><em>password=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster.create_root_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create root keypair for the repository.</p>
+<p>The private key is written to <tt class="docutils literal"><span class="pre">&lt;repos_root&gt;/&lt;repo&gt;/master/keys/root_key</span></tt> and can be moved offline once you&#8217;ve called <a class="reference internal" href="#dtuf.DTufMaster.create_metadata" title="dtuf.DTufMaster.create_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">create_metadata()</span></tt></a>. You&#8217;ll need it again if you call <a class="reference internal" href="#dtuf.DTufMaster.reset_keys" title="dtuf.DTufMaster.reset_keys"><tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt></a> when the root metadata expires.</p>
+<p>The public key is written to <tt class="docutils literal"><span class="pre">&lt;repos_root&gt;/&lt;repo&gt;/master/keys/root_key.pub</span></tt> and can be given to others for use when retrieving a copy of the repository metadata with <tt class="xref py py-meth docutils literal"><span class="pre">DTufCopy.pull_metadata()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>password</strong> (<em>str</em>) &#8211; Password to use for encrypting the private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufMaster.del_target">
+<tt class="descname">del_target</tt><big>(</big><em>target</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster.del_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete a target (data) from the repository and update the local TUF
+metadata.</p>
+<p>The metadata isn&#8217;t updated on the registry until you call
+<tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt>.</p>
+<p>Note that the registry doesn&#8217;t support deletes yet so expect an error.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>target</strong> (<em>str</em>) &#8211; The name you gave to the data when it was uploaded using <a class="reference internal" href="#dtuf.DTufMaster.push_target" title="dtuf.DTufMaster.push_target"><tt class="xref py py-meth docutils literal"><span class="pre">push_target()</span></tt></a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufMaster.push_target">
+<tt class="descname">push_target</tt><big>(</big><em>target</em>, <em>*filename_or_target_list</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster.push_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Upload data to the repository and update the local TUF metadata.</p>
+<p>The metadata isn&#8217;t uploaded until you call <tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt>.</p>
+<p>The data is given a name (known as the <em>target</em>) and can come from a
+list of files or existing target names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>target</strong> (<em>str</em>) &#8211; Name to give the data.</li>
+<li><strong>filename_or_target_list</strong> (<em>list</em>) &#8211; List of data to upload. Each item is either a filename or an existing target name. Existing target names should be prepended with <tt class="docutils literal"><span class="pre">&#64;</span></tt> in order to distinguish them from filenames.</li>
+<li><strong>kwargs</strong> (<em>dict({&#8216;progress&#8217;: function(dgst, chunk, total)})</em>) &#8211; Contains an optional <tt class="docutils literal"><span class="pre">progress</span></tt> member which is a function to call as the upload progresses. The function will be called with the hash of the content of the file currently being uploaded, the blob just read from the file and the total size of the file.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufMaster.reset_keys">
+<tt class="descname">reset_keys</tt><big>(</big><em>root_key_password=None</em>, <em>targets_key_password=None</em>, <em>snapshot_key_password=None</em>, <em>timestamp_key_password=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster.reset_keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Re-sign the TUF metadata for the repository.</p>
+<p>Call this if you&#8217;ve generated new root or metadata keys (because one
+of the keys has been compromised, for example) but you don&#8217;t want to
+delete the repository and start again.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>root_key_password</strong> &#8211; Password to use for decrypting the TUF root private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>targets_key_password</strong> &#8211; Password to use for decrypting the TUF targets private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>snapshot_key_password</strong> &#8211; Password to use for decrypting the TUF snapshot private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+<li><strong>timestamp_key_password</strong> &#8211; Password to use for decrypting the TUF timestamp private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>

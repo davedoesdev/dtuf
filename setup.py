@@ -20,5 +20,6 @@ setup(
                       'fasteners>=0.14.1',
                       'tqdm>=3.1.4',
                       'cryptography>=1.1.2',
-                      'pytimeparse>=1.1.5']
+                      'pytimeparse>=1.1.5',
+                      'decorator>=4.0.6']
 )

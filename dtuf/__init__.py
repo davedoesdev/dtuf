@@ -16,6 +16,7 @@ import hashlib
 import re
 from os import path, getcwd, remove, makedirs, listdir
 from datetime import datetime, timedelta
+from decorator import decorator
 import fasteners
 from dxf import DXFBase, DXF, hash_file, hash_bytes
 import dxf.exceptions
@@ -84,12 +85,14 @@ def _locked(lock, setup, f, self, *args, **kwargs):
             finally:
                 _tuf_clear()
 
+@decorator
 def _master_repo_locked(f):
     def locked(self, *args, **kwargs):
         # pylint: disable=protected-access
         return _locked(self._master_repo_lock, None, f, self, *args, **kwargs)
     return locked
 
+@decorator
 def _copy_repo_locked(f):
     def locked(self, *args, **kwargs):
         # pylint: disable=global-statement,protected-access
@@ -135,7 +138,8 @@ class DTufBase(object):
     """
     Class for communicating with a Docker v2 registry.
     Contains only operations which aren't related to pushing and pulling data
-    using `The Update Framework <https://github.com/theupdateframework/tuf>`_.
+    to repositories in the registry using
+    `The Update Framework <https://github.com/theupdateframework/tuf>`_.
 
     Can act as a context manager. For each context entered, a new
     `requests.Session <http://docs.python-requests.org/en/latest/user/advanced/#session-objects>`_
@@ -229,9 +233,9 @@ class _DTufCommon(DTufBase):
 # pylint: disable=too-many-instance-attributes
 class DTufMaster(_DTufCommon):
     """
-    Class for creating, updating and publishing data using
-    `The Update Framework <https://github.com/theupdateframework/tuf>`_ (TUF)
-    and a Docker registry.
+    Class for creating, updating and publishing data to repositories in a
+    Docker registry using
+    `The Update Framework <https://github.com/theupdateframework/tuf>`_ (TUF).
     """
     # pylint: disable=too-many-arguments
     def __init__(self, host, repo, repos_root=None,
@@ -297,6 +301,16 @@ class DTufMaster(_DTufCommon):
 
     @_master_repo_locked
     def create_root_key(self, password=None):
+        """
+        Create root keypair for the repository.
+
+        The private key is written to ``<repos_root>/<repo>/master/keys/root_key`` and can be moved offline once you've called :meth:`create_metadata`. You'll need it again if you call :meth:`reset_keys` when the root metadata expires.
+
+        The public key is written to ``<repos_root>/<repo>/master/keys/root_key.pub`` and can be given to others for use when retrieving a copy of the repository metadata with :meth:`DTufCopy.pull_metadata`.
+
+        :param password: Password to use for encrypting the private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+        """
         from tuf.repository_tool import generate_and_write_rsa_keypair
         if password is None:
             print('generating root key...')
@@ -307,6 +321,24 @@ class DTufMaster(_DTufCommon):
                              targets_key_password=None,
                              snapshot_key_password=None,
                              timestamp_key_password=None):
+        """
+        Create TUF metadata keypairs for the repository.
+
+        The keys are written to the ``<repos_root>/<repo>/master/keys`` directory. The public keys have a ``.pub`` extension.
+
+        You can move the private keys offline once you've called :meth:`create_metadata` but you'll need them again when you call :meth:`push_metadata` to publish the repository.
+
+        You don't need to give out the metadata public keys since they're published as part of the repository.
+
+        :param targets_key_password: Password to use for encrypting the TUF targets private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param snapshot_key_password: Password to use for encrypting the TUF snapshot private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param timestamp_key_password: Password to use for encrypting the TUF timestamp private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+        """
         from tuf.repository_tool import generate_and_write_rsa_keypair
         if targets_key_password is None:
             print('generating targets key...')
@@ -384,6 +416,24 @@ class DTufMaster(_DTufCommon):
                         targets_key_password=None,
                         snapshot_key_password=None,
                         timestamp_key_password=None):
+        """
+        Create and sign the TUF metadata for the repository.
+
+        You only need to call this once for each repository, and the
+        repository's root and metadata private keys must be available.
+
+        :param root_key_password: Password to use for decrypting the TUF root private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param targets_key_password: Password to use for decrypting the TUF targets private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param snapshot_key_password: Password to use for decrypting the TUF snapshot private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param timestamp_key_password: Password to use for decrypting the TUF timestamp private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+        """
         from tuf.repository_tool import create_new_repository
         # Create repository object and add metadata to it
         self._add_metadata(create_new_repository(self._master_repo_dir),
@@ -398,6 +448,25 @@ class DTufMaster(_DTufCommon):
                    targets_key_password=None,
                    snapshot_key_password=None,
                    timestamp_key_password=None):
+        """
+        Re-sign the TUF metadata for the repository.
+
+        Call this if you've generated new root or metadata keys (because one
+        of the keys has been compromised, for example) but you don't want to
+        delete the repository and start again.
+
+        :param root_key_password: Password to use for decrypting the TUF root private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param targets_key_password: Password to use for decrypting the TUF targets private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param snapshot_key_password: Password to use for decrypting the TUF snapshot private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param timestamp_key_password: Password to use for decrypting the TUF timestamp private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+        """
         from tuf.repository_tool import load_repository
         # Load repository object
         repository = load_repository(self._master_repo_dir)
@@ -416,6 +485,23 @@ class DTufMaster(_DTufCommon):
 
     @_master_repo_locked
     def push_target(self, target, *filename_or_target_list, **kwargs):
+        """
+        Upload data to the repository and update the local TUF metadata.
+
+        The metadata isn't uploaded until you call :meth:`push_metadata`.
+
+        The data is given a name (known as the *target*) and can come from a
+        list of files or existing target names.
+
+        :param target: Name to give the data.
+        :type target: str
+
+        :param filename_or_target_list: List of data to upload. Each item is either a filename or an existing target name. Existing target names should be prepended with ``@`` in order to distinguish them from filenames.
+        :type filename_or_target_list: list
+
+        :param kwargs: Contains an optional ``progress`` member which is a function to call as the upload progresses. The function will be called with the hash of the content of the file currently being uploaded, the blob just read from the file and the total size of the file.
+        :type kwargs: dict({'progress': function(dgst, chunk, total)})
+        """
         progress = kwargs.get('progress')
         if _is_metadata_file(target) or \
            _skip_consistent_target_digest(target) != 0:
@@ -437,6 +523,18 @@ class DTufMaster(_DTufCommon):
 
     @_master_repo_locked
     def del_target(self, target):
+        """
+        Delete a target (data) from the repository and update the local TUF
+        metadata.
+
+        The metadata isn't updated on the registry until you call
+        :meth:`push_metadata`.
+
+        Note that the registry doesn't support deletes yet so expect an error.
+
+        :param target: The name you gave to the data when it was uploaded using :meth:`push_target`.
+        :type target: str
+        """
         from tuf.repository_tool import Repository
         # read target manifest
         manifest_filename = path.join(self._master_targets_dir, target)
