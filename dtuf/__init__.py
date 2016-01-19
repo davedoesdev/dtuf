@@ -553,6 +553,7 @@ class DTufMaster(_DTufCommon):
     def get_expirations(self):
         from tuf.repository_tool import load_repository
         repository = load_repository(self._master_repo_dir)
+        # pylint: disable=no-member
         return {
             'root': repository.root.expiration,
             'targets': repository.targets.expiration,
@@ -612,6 +613,7 @@ class DTufCopy(_DTufCommon):
                 metadata = temp_file.read()
                 metadata_signable = json.loads(metadata.decode('utf-8'))
                 tuf.formats.check_signable_object_format(metadata_signable)
+                # pylint: disable=protected-access
                 f = tuf.client.updater.Updater._ensure_not_expired
                 f = getattr(f, '__func__', f)
                 f(None, metadata_signable['signed'], 'root')

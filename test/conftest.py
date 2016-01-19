@@ -1,13 +1,17 @@
 import os
-import logging
+try:
+    os.remove('tuf.log')
+    os.remove('dtuf.log')
+except OSError as e:
+    import errno
+    if e.errno != errno.ENOENT:
+        raise
 import subprocess
 import time
 import tempfile
 import shutil
 import requests
 import pytest
-import tuf.keys
-import tuf.repository_lib
 import dtuf
 import dtuf.main
 
@@ -28,6 +32,11 @@ _auth_dir = os.path.join(_here, 'auth')
 _remove_container = os.path.join(_here, 'remove_container.sh')
 
 DEVNULL = open(os.devnull, 'wb')
+
+def make_dummy_root_pub_key():
+    import tuf.keys
+    import tuf.repository_lib
+    return tuf.keys.generate_rsa_key(tuf.repository_lib.DEFAULT_RSA_KEY_BITS)['keyval']['public']
 
 def pytest_namespace():
     return {
@@ -56,7 +65,7 @@ def pytest_namespace():
         'snapshot_key_password': 'Dummypw3',
         'timestamp_key_password': 'Dummypw4',
 
-        'dummy_root_pub_key': tuf.keys.generate_rsa_key(tuf.repository_lib.DEFAULT_RSA_KEY_BITS)['keyval']['public']
+        'make_dummy_root_pub_key': make_dummy_root_pub_key
     }
 
 @pytest.fixture(scope='module')

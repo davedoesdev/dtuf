@@ -105,7 +105,7 @@ def test_pull_metadata(dtuf_objs):
     else:
         assert str(ex.value) == 'No root of trust! Could not find the "root.json" file.'
     with pytest.raises(tuf.CryptoError):
-        dtuf_objs.copy.pull_metadata(pytest.dummy_root_pub_key)
+        dtuf_objs.copy.pull_metadata(pytest.make_dummy_root_pub_key())
     assert sorted(_pull_metadata_with_master_public_root_key(dtuf_objs)) == \
         (['foobar', 'hello'] if exists else ['foobar', 'hello', 'there'])
     assert _copy_metadata_exists(dtuf_objs, 'root')
@@ -275,3 +275,9 @@ def test_reset_keys(dtuf_objs):
         assert isinstance(ex2, tuf.CryptoError)
     # pull metadata again with public root key
     assert _pull_metadata_with_master_public_root_key(dtuf_objs) == []
+
+# log test
+# remove tuf.log, dtuf.log - can we do that at start?
+# check here that tuf.log doesn't exist but dtuf.log does
+# check disabling logging too
+

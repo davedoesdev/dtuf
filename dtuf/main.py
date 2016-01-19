@@ -110,14 +110,16 @@ def doit(args, environ):
     else:
         tuf.conf.ENABLE_FILE_LOGGING = False
 
-    import dtuf
     import tuf.log
-    log_level = environ.get('DTUF_FILE_LOG_LEVEL', 'WARNING')
-    tuf.log.set_filehandler_log_level(getattr(logging, log_level))
+    if log_file:
+        log_level = environ.get('DTUF_FILE_LOG_LEVEL', 'WARNING')
+        tuf.log.set_filehandler_log_level(getattr(logging, log_level))
     log_level = environ.get('DTUF_CONSOLE_LOG_LEVEL', 'WARNING')
     # tuf.repository_tool calls tuf.log.add_console_handler
     import tuf.repository_tool
     tuf.log.set_console_log_level(getattr(logging, log_level))
+
+    import dtuf
 
     dtuf_progress = environ.get('DTUF_PROGRESS')
     if dtuf_progress == '1' or (dtuf_progress != '0' and sys.stderr.isatty()):

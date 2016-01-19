@@ -6,6 +6,7 @@ import hashlib
 import shutil
 import errno
 import time
+from datetime import datetime, timedelta, tzinfo
 from io import BytesIO
 import pytest
 import requests
@@ -14,9 +15,9 @@ import tqdm
 import dtuf.main
 import dxf.exceptions
 import iso8601
-from datetime import datetime, timedelta, tzinfo
 
 class _UTC(tzinfo):
+    # pylint: disable=unused-argument
     def utcoffset(self, dt):
         return timedelta(0)
 
@@ -174,7 +175,7 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     class FakeStdin(object):
         # pylint: disable=no-self-use
         def read(self):
-            return pytest.dummy_root_pub_key
+            return pytest.make_dummy_root_pub_key()
     monkeypatch.setattr(sys, 'stdin', FakeStdin())
     with pytest.raises(tuf.CryptoError):
         assert dtuf.main.doit(['pull-metadata', pytest.repo, '-'], dtuf_main) == 0
@@ -343,7 +344,7 @@ def test_lifetime(dtuf_main, capsys):
         assert err == ""
         e = {}
         for l in out.split(os.linesep):
-            if (l):
+            if l:
                 f = l.split(': ')
                 e[f[0]] = iso8601.parse_date(f[1])
         assert len(e) == 4
@@ -428,7 +429,7 @@ def test_reset_keys(dtuf_main, capsys):
     assert err == ""
     e = {}
     for l in out.split(os.linesep):
-        if (l):
+        if l:
             f = l.split(': ')
             e[f[0]] = iso8601.parse_date(f[1])
     assert len(e) == 4
@@ -470,3 +471,8 @@ def test_auth_host(dtuf_main):
         environ.update(dtuf_main)
         with pytest.raises(requests.exceptions.ConnectionError):
             dtuf.main.doit(['list-repos'], environ)
+
+# pylint: disable=unused-argument
+def test_log(dtuf_main):
+    assert path.exists('dtuf.log')
+    assert not path.exists('tuf.log')
