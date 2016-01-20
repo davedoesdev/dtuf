@@ -86,26 +86,22 @@ def _locked(lock, setup, f, self, *args, **kwargs):
                 _tuf_clear()
 
 @decorator
-def _master_repo_locked(f):
-    def locked(self, *args, **kwargs):
-        # pylint: disable=protected-access
-        return _locked(self._master_repo_lock, None, f, self, *args, **kwargs)
-    return locked
+def _master_repo_locked(f, self, *args, **kwargs):
+    # pylint: disable=protected-access
+    return _locked(self._master_repo_lock, None, f, self, *args, **kwargs)
 
 @decorator
-def _copy_repo_locked(f):
-    def locked(self, *args, **kwargs):
-        # pylint: disable=global-statement,protected-access
-        def setup():
-            import tuf.conf
-            import tuf.download
-            # pylint: disable=protected-access
-            tuf.download._download_file = _download_file
-            global _updater_dxf
-            _updater_dxf = self._dxf
-            tuf.conf.repository_directory = self._copy_repo_dir
-        return _locked(self._copy_repo_lock, setup, f, self, *args, **kwargs)
-    return locked
+def _copy_repo_locked(f, self, *args, **kwargs):
+    # pylint: disable=global-statement,protected-access
+    def setup():
+        import tuf.conf
+        import tuf.download
+        # pylint: disable=protected-access
+        tuf.download._download_file = _download_file
+        global _updater_dxf
+        _updater_dxf = self._dxf
+        tuf.conf.repository_directory = self._copy_repo_dir
+    return _locked(self._copy_repo_lock, setup, f, self, *args, **kwargs)
 
 _consistent_prefix_re = re.compile(r'[a-f0-9]{' +
                                    str(hashlib.sha256().digest_size * 2) +
@@ -156,7 +152,7 @@ class DTufBase(object):
         :param host: Host name of registry. Can contain port numbers. e.g. ``registry-1.docker.io``, ``localhost:5000``.
         :type host: str
 
-        :param auth: Authentication function to be called whenever authentication to the registry is required. Receives the :class:`DTufBase` object and a HTTP response object. It should call :meth:`authenticate` with a username, password and ``response`` before it returns.
+        :param auth: Authentication function to be called whenever authentication to the registry is required. Receives the :class:`DTufBase` object and a HTTP response object. It should call :meth:`authenticate` on ``dtuf_obj`` with a username, password and ``response`` before it returns.
         :type auth: function(dtuf_obj, response)
 
         :param insecure: Use HTTP instead of HTTPS (which is the default) when connecting to the registry.
@@ -252,7 +248,7 @@ class DTufMaster(_DTufCommon):
         :param repos_root: Directory under which to store TUF metadata. Note that the value of ``repo`` and the literal string ``master`` are appended to this directory name before storing the metadata. Defaults to ``dtuf_repos`` in the current working directory.
         :type repos_root: str
 
-        :param auth: Authentication function to be called whenever authentication to the registry is required. Receives the :class:`DTufBase` object and a HTTP response object. It should call :meth:`authenticate` with a username, password and ``response`` before it returns.
+        :param auth: Authentication function to be called whenever authentication to the registry is required. Receives the :class:`DTufBase` object and a HTTP response object. It should call :meth:`DTufBase.authenticate` on ``dtuf_obj`` with a username, password and ``response`` before it returns.
         :type auth: function(dtuf_obj, response)
 
         :param insecure: Use HTTP instead of HTTPS (which is the default) when connecting to the registry.
@@ -562,6 +558,31 @@ class DTufMaster(_DTufCommon):
                       snapshot_key_password=None,
                       timestamp_key_password=None,
                       progress=None):
+        """
+        Upload local TUF metadata to the repository.
+
+        The TUF metadata consists of a list of targets (which were uploaded by
+        :meth:`push_target`), a snapshot of the state of the metadata (list of
+        hashes), a timestamp and a list of public keys.
+
+        The list of public keys was signed by the root private key when you
+        called :meth:`create_metadata` (or :meth:`reset_keys`).
+
+        The other metadata will be signed by this function, so you need to
+        supply the passwords to the respective private keys.
+
+        :param targets_key_password: Password to use for decrypting the TUF targets private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param snapshot_key_password: Password to use for decrypting the TUF snapshot private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param timestamp_key_password: Password to use for decrypting the TUF timestamp private key. You'll be prompted for one if you don't supply it.
+        :type password: str
+
+        :param progress: Optional function to call as the upload progresses. The function will be called with the hash of the content of the file currently being uploaded, the blob just read from the file and the total size of the file.
+        :type progress: function(dgst, chunk, total)
+        """
         from tuf.repository_tool import load_repository, \
                                         Repository, \
                                         import_rsa_privatekey_from_file
@@ -642,6 +663,13 @@ class DTufMaster(_DTufCommon):
 
     @_master_repo_locked
     def list_targets(self):
+        """
+        Return the names of all the targets defined in the local TUF metadata.
+
+        :returns: List of target names
+        :rtype: list
+
+        """
         from tuf.repository_tool import load_repository
         repository = load_repository(self._master_repo_dir)
         #  pylint: disable=no-member
@@ -649,6 +677,12 @@ class DTufMaster(_DTufCommon):
 
     @_master_repo_locked
     def get_expirations(self):
+        """
+        Return the expiration dates of the TUF metadata.
+
+        :returns: A dictionary containing `datetime <https://docs.python.org/2/library/datetime.html#datetime.datetime>`_ values for the keys ``root``, ``targets``, ``snapshot`` and ``timestamp``.
+        :rtype: dict
+        """
         from tuf.repository_tool import load_repository
         repository = load_repository(self._master_repo_dir)
         # pylint: disable=no-member
@@ -660,9 +694,32 @@ class DTufMaster(_DTufCommon):
         }
 
 class DTufCopy(_DTufCommon):
+    """
+    Class for downloading data from repositories in a Docker registry using
+    `The Update Framework <https://github.com/theupdateframework/tuf>`_ (TUF).
+    """
     # pylint: disable=too-many-arguments
     def __init__(self, host, repo, repos_root=None,
                  auth=None, insecure=False, auth_host=None):
+        """
+        :param host: Host name of registry. Can contain port numbers. e.g. ``registry-1.docker.io``, ``localhost:5000``.
+        :type host: str
+
+        :param repo: Name of the repository to access on the registry. Typically this is of the form ``username/reponame`` but for your own registries you don't actually have to stick to that. The repository is used to retrieve data and TUF metadata describing the data.
+        :type repo: str
+
+        :param repos_root: Directory under which to store TUF metadata. Note that the value of ``repo`` and the literal string ``copy`` are appended to this directory name before storing the metadata. Defaults to ``dtuf_repos`` in the current working directory.
+        :type repos_root: str
+
+        :param auth: Authentication function to be called whenever authentication to the registry is required. Receives the :class:`DTufBase` object and a HTTP response object. It should call :meth:`DTufBase.authenticate` with a username, password and ``response`` before it returns.
+        :type auth: function(dtuf_obj, response)
+
+        :param insecure: Use HTTP instead of HTTPS (which is the default) when connecting to the registry.
+        :type insecure: bool
+
+        :param auth_host: Host to use for token authentication. If set, overrides host returned by then registry.
+        :type auth_host: str
+        """
         super(DTufCopy, self).__init__(host, repo, repos_root,
                                        auth, insecure, auth_host)
         self._copy_dir = path.join(self._repo_root, 'copy')
@@ -682,6 +739,26 @@ class DTufCopy(_DTufCommon):
     # pylint: disable=too-many-locals
     @_copy_repo_locked
     def pull_metadata(self, root_public_key=None, progress=None):
+        """
+        Download TUF metadata from the repository.
+
+        The metadata is checked for expiry and verified against the root public
+        key for the repository.
+
+        You only need to supply the root public key once, and you should obtain
+        it from the person who uploaded the metadata.
+        
+        Target data is not downloaded - use :meth:`pull_target` for that.
+
+        :param root_public_key: PEM-encoded root public key. Obtain this from the repository's owner, who generates the key using :meth:`DTufMaster.create_root_key` on the repository master.
+        :type root_public_key: str
+
+        :param progress: Optional function to call as the download progresses. The function will be called with the hash of the metadata currently being download, the blob just read from the repository and the total size of the metadata.
+        :type progress: function(dgst, chunk, total)
+
+        :returns: List of targets which have been updated since you last downloaded them (using :meth:`pull_target`).
+        :rtype: list
+        """
         import tuf.keydb
         import tuf.roledb
         import tuf.client.updater
@@ -764,13 +841,28 @@ class DTufCopy(_DTufCommon):
         return self._dxf.get_alias(manifest=manifest, verify=False, sizes=sizes)
 
     def pull_target(self, target, digests_and_sizes=False):
-        if digests_and_sizes:
-            return [(it, dgst, size) for (dgst, (it, size)) in
-                    [(dgst, self._dxf.pull_blob(dgst, size=True))
-                     for dgst in self._get_digests(target)]]
-        else:
-            return [self._dxf.pull_blob(dgst)
-                    for dgst in self._get_digests(target)]
+        """
+        Download a target (data) from the repository.
+
+        Target data consists of one or more separate blobs (depending on how
+        many were uploaded). Because this function returns an iterator, download
+        of each blob occurs lazily.
+        
+        :param target: Name of the target to download.
+        :type target: str
+
+        :param digests_and_sizes: Whether to return the hash and size of each downloaded blob as well.
+        :type digests_and_sizes: bool
+
+        :returns: If ``digests_and_sizes`` is falsey, an iterator which yields for each blob an iterator over its content. If ``digests_and_sizes`` is truthy, an iterator which yields for each blob a tuple containing an iterator over its content, the hash of its content and its size.
+        :rtype: iterator
+        """
+        for dgst in self._get_digests(target):
+            if digests_and_sizes:
+                it, size = self._dxf.pull_blob(dgst, size=True)
+                yield it, dgst, size
+            else:
+                yield self._dxf.pull_blob(dgst)
 
     def blob_sizes(self, target):
         return [size for _, size in self._get_digests(target, sizes=True)]

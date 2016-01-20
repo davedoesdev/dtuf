@@ -155,7 +155,8 @@ def _dummy_pull_target(dtuf_objs, target, n):
 
 def test_pull_target(dtuf_objs):
     with pytest.raises(tuf.UnknownTargetError):
-        dtuf_objs.copy.pull_target('dummy')
+        for _ in dtuf_objs.copy.pull_target('dummy'):
+            pass
     _pull_target(dtuf_objs, 'hello', [pytest.blob1_hash], None)
     _pull_target(dtuf_objs, 'there', [pytest.blob2_hash], None)
     _pull_target(dtuf_objs, 'foobar', [pytest.blob1_hash, pytest.blob2_hash], None)
