@@ -107,7 +107,7 @@ otherwise as the anonymous user.</p>
 <li><strong>username</strong> (<em>str</em>) &#8211; User name to authenticate as.</li>
 <li><strong>password</strong> (<em>str</em>) &#8211; User&#8217;s password.</li>
 <li><strong>actions</strong> (<em>list</em>) &#8211; If you know which types of operation you need to make on the registry, specify them here. Valid actions are <tt class="docutils literal"><span class="pre">pull</span></tt>, <tt class="docutils literal"><span class="pre">push</span></tt> and <tt class="docutils literal"><span class="pre">*</span></tt>.</li>
-<li><strong>response</strong> (<em>requests.Response</em>) &#8211; When the <tt class="docutils literal"><span class="pre">auth</span></tt> function you passed to <tt class="xref py py-class docutils literal"><span class="pre">DXFBase</span></tt>&#8216;s constructor is called, it is passed a HTTP response object. Pass it back to <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><tt class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></tt></a> to have it automatically detect which actions are required.</li>
+<li><strong>response</strong> (<em>requests.Response</em>) &#8211; When the <tt class="docutils literal"><span class="pre">auth</span></tt> function you passed to <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><tt class="xref py py-class docutils literal"><span class="pre">DTufBase</span></tt></a>&#8216;s constructor is called, it is passed a HTTP response object. Pass it back to <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><tt class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></tt></a> to have it automatically detect which actions are required.</li>
 </ul>
 </td>
 </tr>
@@ -170,6 +170,39 @@ previously, you can also set it but be aware tokens expire quickly.</p>
 </tbody>
 </table>
 <dl class="method">
+<dt id="dtuf.DTufCopy.get_expirations">
+<tt class="descname">get_expirations</tt><big>(</big><big>)</big><a class="headerlink" href="#dtuf.DTufCopy.get_expirations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the expiration dates of the local TUF metadata copy.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A dictionary containing <a class="reference external" href="https://docs.python.org/2/library/datetime.html#datetime.datetime">datetime</a> values for the keys <tt class="docutils literal"><span class="pre">root</span></tt>, <tt class="docutils literal"><span class="pre">targets</span></tt>, <tt class="docutils literal"><span class="pre">snapshot</span></tt> and <tt class="docutils literal"><span class="pre">timestamp</span></tt>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufCopy.list_targets">
+<tt class="descname">list_targets</tt><big>(</big><big>)</big><a class="headerlink" href="#dtuf.DTufCopy.list_targets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the names of all the targets defined in the local copy of the
+TUF metadata.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of target names</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="dtuf.DTufCopy.pull_metadata">
 <tt class="descname">pull_metadata</tt><big>(</big><em>root_public_key=None</em>, <em>progress=None</em><big>)</big><a class="headerlink" href="#dtuf.DTufCopy.pull_metadata" title="Permalink to this definition">¶</a></dt>
 <dd><p>Download TUF metadata from the repository.</p>
@@ -205,6 +238,8 @@ it from the person who uploaded the metadata.</p>
 <p>Target data consists of one or more separate blobs (depending on how
 many were uploaded). Because this function returns an iterator, download
 of each blob occurs lazily.</p>
+<p>Target information is stored in the TUF metadata, so you should have
+called <a class="reference internal" href="#dtuf.DTufCopy.pull_metadata" title="dtuf.DTufCopy.pull_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">pull_metadata()</span></tt></a> previously.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -441,6 +476,29 @@ delete the repository and start again.</p>
 </div>
 <div class="section" id="module-dtuf.exceptions">
 <span id="dtuf-exceptions-module"></span><h1>dtuf.exceptions module<a class="headerlink" href="#module-dtuf.exceptions" title="Permalink to this headline">¶</a></h1>
+<p>Module containing exceptions thrown by <a class="reference internal" href="#module-dtuf" title="dtuf"><tt class="xref py py-mod docutils literal"><span class="pre">dtuf</span></tt></a>.</p>
+<dl class="exception">
+<dt id="dtuf.exceptions.DTufError">
+<em class="property">exception </em><tt class="descclassname">dtuf.exceptions.</tt><tt class="descname">DTufError</tt><a class="headerlink" href="#dtuf.exceptions.DTufError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>Base exception class for all dtuf errors</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="dtuf.exceptions.DTufReservedTargetError">
+<em class="property">exception </em><tt class="descclassname">dtuf.exceptions.</tt><tt class="descname">DTufReservedTargetError</tt><big>(</big><em>target</em><big>)</big><a class="headerlink" href="#dtuf.exceptions.DTufReservedTargetError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dtuf.exceptions.DTufError" title="dtuf.exceptions.DTufError"><tt class="xref py py-class docutils literal"><span class="pre">dtuf.exceptions.DTufError</span></tt></a></p>
+<p>Target name is reserved so can&#8217;t be used in <a class="reference internal" href="#dtuf.DTufMaster.push_target" title="dtuf.DTufMaster.push_target"><tt class="xref py py-meth docutils literal"><span class="pre">dtuf.DTufMaster.push_target()</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>target</strong> (<em>str</em>) &#8211; Target name</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="indices-and-tables">
 <h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>

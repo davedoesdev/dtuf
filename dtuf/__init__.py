@@ -195,7 +195,7 @@ class DTufBase(object):
         :param actions: If you know which types of operation you need to make on the registry, specify them here. Valid actions are ``pull``, ``push`` and ``*``.
         :type actions: list
 
-        :param response: When the ``auth`` function you passed to :class:`DXFBase`'s constructor is called, it is passed a HTTP response object. Pass it back to :meth:`authenticate` to have it automatically detect which actions are required.
+        :param response: When the ``auth`` function you passed to :class:`DTufBase`'s constructor is called, it is passed a HTTP response object. Pass it back to :meth:`authenticate` to have it automatically detect which actions are required.
         :type response: requests.Response
 
         :rtype: str
@@ -668,7 +668,6 @@ class DTufMaster(_DTufCommon):
 
         :returns: List of target names
         :rtype: list
-
         """
         from tuf.repository_tool import load_repository
         repository = load_repository(self._master_repo_dir)
@@ -847,6 +846,9 @@ class DTufCopy(_DTufCommon):
         Target data consists of one or more separate blobs (depending on how
         many were uploaded). Because this function returns an iterator, download
         of each blob occurs lazily.
+
+        Target information is stored in the TUF metadata, so you should have
+        called :meth:`pull_metadata` previously.
         
         :param target: Name of the target to download.
         :type target: str
@@ -875,6 +877,13 @@ class DTufCopy(_DTufCommon):
 
     @_copy_repo_locked
     def list_targets(self):
+        """
+        Return the names of all the targets defined in the local copy of the
+        TUF metadata.
+
+        :returns: List of target names
+        :rtype: list
+        """
         import tuf.client.updater
         updater = tuf.client.updater.Updater('updater',
                                              self._repository_mirrors)
@@ -882,6 +891,12 @@ class DTufCopy(_DTufCommon):
 
     @_copy_repo_locked
     def get_expirations(self):
+        """
+        Return the expiration dates of the local TUF metadata copy.
+
+        :returns: A dictionary containing `datetime <https://docs.python.org/2/library/datetime.html#datetime.datetime>`_ values for the keys ``root``, ``targets``, ``snapshot`` and ``timestamp``.
+        :rtype: dict
+        """
         import tuf.client.updater
         updater = tuf.client.updater.Updater('updater',
                                              self._repository_mirrors)

@@ -15,7 +15,6 @@ dtuf module
    :members:
    :show-inheritance:
 
-
 dtuf.exceptions module
 ======================
 
