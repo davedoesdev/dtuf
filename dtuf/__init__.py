@@ -746,7 +746,7 @@ class DTufCopy(_DTufCommon):
 
         You only need to supply the root public key once, and you should obtain
         it from the person who uploaded the metadata.
-        
+
         Target data is not downloaded - use :meth:`pull_target` for that.
 
         :param root_public_key: PEM-encoded root public key. Obtain this from the repository's owner, who generates the key using :meth:`DTufMaster.create_root_key` on the repository master.
@@ -849,7 +849,7 @@ class DTufCopy(_DTufCommon):
 
         Target information is stored in the TUF metadata, so you should have
         called :meth:`pull_metadata` previously.
-        
+
         :param target: Name of the target to download.
         :type target: str
 
