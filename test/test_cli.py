@@ -12,8 +12,8 @@ import pytest
 import requests
 import tuf
 import tqdm
-import dtuf.main
 import dxf.exceptions
+import dtuf.main
 import iso8601
 
 class _UTC(tzinfo):
