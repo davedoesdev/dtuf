@@ -31,8 +31,8 @@ dtuf = DTufMaster('registry-1.docker.io',
                   os.environ['DOCKER_HUB_REPO'],
                   auth=auth)
 
-with open('demo.txt', 'w') as f:
-    f.write('Hello World!\n')
+with open('demo.txt', 'wb') as f:
+    f.write(b'Hello World!\n')
 
 dtuf.create_root_key('demo')
 dtuf.create_metadata_keys('demo', 'demo', 'demo')
@@ -52,9 +52,9 @@ with open('dtuf_repos/' + \
           '/master/keys/root_key.pub') as f:
     assert dtuf.pull_metadata(f.read()) == ['demo.txt']
 
-s = ''
+s = b''
 for download in dtuf.pull_target('demo.txt'):
     for chunk in download:
         s += chunk
-assert s == 'Hello World!\n'
+assert s == b'Hello World!\n'
 print(s)
