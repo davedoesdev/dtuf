@@ -13,3 +13,6 @@ dtuf.log
 /test/ca.*
 /.coverage
 /.cache
+/dist
+/python_dtuf.egg-info
+/build

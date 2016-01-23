@@ -1,5 +1,4 @@
-dtuf   \ |Build Status| |Coverage Status| |PyPI version|
-========================================================
+\ |Build Status| |Coverage Status| |PyPI version|
 
 Docker registry bindings for `The Update
 Framework <http://theupdateframework.com/>`__ in Python. Uses
