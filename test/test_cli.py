@@ -12,9 +12,9 @@ import pytest
 import requests
 import tuf
 import tqdm
+import iso8601
 import dxf.exceptions
 import dtuf.main
-import iso8601
 
 class _UTC(tzinfo):
     # pylint: disable=unused-argument
