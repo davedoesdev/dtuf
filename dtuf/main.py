@@ -1,31 +1,3 @@
-# dtuf auth <repo> <action>...         auth with DTUF_USERNAME/DTUF_PASSWORD
-#                                      and print token
-
-# dtuf create-root-key <repo>          create root key for repo
-# dtuf create-metadata-keys <repo>     create metadata keys for repo
-# dtuf create-metadata <repo>          create metadata for repo
-# dtuf reset-keys <repo>               reset repo keys
-
-# dtuf push-target <repo> target <@target|file>...
-#                                      make a new target by uploading blobs
-#                                      from files or using blobs from existing
-#                                      targets
-# dtuf del-target <repo> target...     delete blobs and targets pointing to them
-# dtuf push-metadata <repo>            update metadata and push it to remote
-# dtuf list-master-targets <repo>      list all targets in a repo
-# dtuf get-master-expirations <repo>   show metadata expiry dates
-
-# dtuf pull-metadata <repo> [<root-pubkey-file>|-]
-#                                      pull metadata from remote and print
-#                                      updated targets
-# dtuf pull-target <repo> target...    download blobs to stdout
-# dtuf blob-sizes <repo> target...     print sizes of blobs
-# dtuf check-target <repo> target <file>...
-#                                      check files are latest blobs for target
-# dtuf list-copy-targets <repo>        list all targets in a repo
-# dtuf get-copy-expirations <repo>     show metadata expiry dates
-# dtuf list-repos                      list all repos (may not all be TUF)
-
 # pylint: disable=wrong-import-position,wrong-import-order,superfluous-parens
 import os
 import sys
@@ -241,12 +213,13 @@ def doit(args, environ):
                 print(name)
 
         elif args.op == 'pull-target':
+            _stdout = getattr(sys.stdout, 'buffer', sys.stdout)
             for name in args.args:
                 for it, dgst, size in dtuf_copy.pull_target(name, True):
                     if environ.get('DTUF_BLOB_INFO') == '1':
                         print(dgst + ' ' + str(size))
                     # pylint: disable=protected-access
-                    dtuf._write_with_progress(it, dgst, size, sys.stdout, progress)
+                    dtuf._write_with_progress(it, dgst, size, _stdout, progress)
 
         elif args.op == 'blob-sizes':
             for name in args.args:
