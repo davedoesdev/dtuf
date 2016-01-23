@@ -14,6 +14,8 @@ files in a Docker registry.
 - Supports Docker registry version 2.
 - Works on Python 2.7 and 3.4.
 
+## Examples
+
 ### Command-line example
 
 This assumes at least `DTUF_HOST` has been set to the hostname of a Docker

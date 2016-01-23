@@ -19,6 +19,9 @@ target files in a Docker registry.
 -  Supports Docker registry version 2.
 -  Works on Python 2.7 and 3.4.
 
+Examples
+--------
+
 Command-line example
 ~~~~~~~~~~~~~~~~~~~~
 
