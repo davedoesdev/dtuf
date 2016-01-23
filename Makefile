@@ -37,7 +37,7 @@ run_test: export HASH3=$(shell sha256sum test/fixtures/blob3 | cut -d ' ' -f1)
 run_test: export HASH4=$(shell sha256sum test/fixtures/blob4 | cut -d ' ' -f1)
 run_test: export REQUESTS_CA_BUNDLE=test/ca.pem
 run_test:
-	py.test -s $(test_args)
+	py.test -s --instafail $(test_args)
 
 coverage: $(fixtures) run_coverage
 

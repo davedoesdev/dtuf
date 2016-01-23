@@ -10,4 +10,5 @@ iso8601>=0.1.11
 pylint>=1.5.1
 pytest>=2.8.3
 pytest-cov>=2.2.0
+pytest-instafail>=0.3.0
 coveralls>=1.1
