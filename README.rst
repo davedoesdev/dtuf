@@ -32,9 +32,8 @@ You can run your own registry or use a hosted one such as Docker Hub
 (``registry-1.docker.io``).
 
 If you want to run your own, see this `example
-script <blob/master/test/cli_example.sh>`__ or the `unit
-tests <blob/master/test/conftest.py>`__. There are also full
-instructions available
+script <test/cli_example.sh>`__ or the `unit
+tests <test/conftest.py>`__. There are also full instructions available
 `here <https://github.com/docker/distribution/blob/master/docs/deploying.md>`__.
 
 .. code:: shell
