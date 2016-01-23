@@ -9,8 +9,8 @@ files in a Docker registry.
 - Distribute your data with the security and trust features of [The Update Framework](http://theupdateframework.com/).
 - Backed by the scalability and flexbility of a [Docker registry](https://github.com/docker/distribution).
 - No extra moving parts: just Python client-side and Docker registry server-side.
-  - Docker client and daemon not required.
-  - [Notary](https://github.com/docker/notary) not required. See [this issue](https://github.com/docker/notary/issues/261) for discussion.
+    - Docker client and daemon not required.
+    - [Notary](https://github.com/docker/notary) not required. See [this issue](https://github.com/docker/notary/issues/261) for discussion.
 - Supports Docker registry version 2.
 - Works on Python 2.7 and 3.4.
 

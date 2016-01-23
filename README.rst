@@ -12,10 +12,12 @@ target files in a Docker registry.
    registry <https://github.com/docker/distribution>`__.
 -  No extra moving parts: just Python client-side and Docker registry
    server-side.
--  Docker client and daemon not required.
--  `Notary <https://github.com/docker/notary>`__ not required. See `this
-   issue <https://github.com/docker/notary/issues/261>`__ for
-   discussion.
+
+   -  Docker client and daemon not required.
+   -  `Notary <https://github.com/docker/notary>`__ not required. See
+      `this issue <https://github.com/docker/notary/issues/261>`__ for
+      discussion.
+
 -  Supports Docker registry version 2.
 -  Works on Python 2.7 and 3.4.
 
