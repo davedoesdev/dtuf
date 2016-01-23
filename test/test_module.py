@@ -192,8 +192,12 @@ def test_check_target(dtuf_objs):
     dtuf_objs.copy.check_target('foobar', pytest.blob2_file, pytest.blob1_file, pytest.blob2_file, pytest.blob3_file)
     with pytest.raises(dxf.exceptions.DXFDigestMismatchError) as ex:
         dtuf_objs.copy.check_target('hello', pytest.blob2_file)
-    assert ex.value.got == [pytest.blob2_hash]
-    assert ex.value.expected == [pytest.blob1_hash]
+    assert ex.value.got == pytest.blob2_hash
+    assert ex.value.expected == pytest.blob1_hash
+    with pytest.raises(dxf.exceptions.DXFDigestMismatchError) as ex:
+        dtuf_objs.copy.check_target('foobar', pytest.blob1_file)
+    assert ex.value.got == (pytest.blob1_file,)
+    assert ex.value.expected == [pytest.blob2_hash, pytest.blob1_hash, pytest.blob2_hash, pytest.blob3_hash]
 
 def _list_copy_targets(dtuf_copy_obj):
     assert sorted(dtuf_copy_obj.list_targets()) == ['foobar', 'hello', 'there']

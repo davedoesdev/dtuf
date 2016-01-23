@@ -170,6 +170,44 @@ previously, you can also set it but be aware tokens expire quickly.</p>
 </tbody>
 </table>
 <dl class="method">
+<dt id="dtuf.DTufCopy.blob_sizes">
+<tt class="descname">blob_sizes</tt><big>(</big><em>target</em><big>)</big><a class="headerlink" href="#dtuf.DTufCopy.blob_sizes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the sizes of all the blobs which make up a target.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>target</strong> (<em>str</em>) &#8211; Name of target</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">List of blob sizes</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="dtuf.DTufCopy.check_target">
+<tt class="descname">check_target</tt><big>(</big><em>target</em>, <em>*filenames</em><big>)</big><a class="headerlink" href="#dtuf.DTufCopy.check_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check whether the hashes of a target&#8217;s blobs match the hashes of a
+given list of filenames.</p>
+<p>Raises <cite>dxf.exceptions.DXFDigestMismatchError</cite> if they don&#8217;t.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>target</strong> (<em>str</em>) &#8211; Name of target to check.</li>
+<li><strong>filenames</strong> (<em>list</em>) &#8211; Names of files to check against.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="dtuf.DTufCopy.get_expirations">
 <tt class="descname">get_expirations</tt><big>(</big><big>)</big><a class="headerlink" href="#dtuf.DTufCopy.get_expirations" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the expiration dates of the local TUF metadata copy.</p>
@@ -280,7 +318,7 @@ Docker registry using
 <li><strong>auth</strong> (<em>function(dtuf_obj, response)</em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><tt class="xref py py-class docutils literal"><span class="pre">DTufBase</span></tt></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><tt class="xref py py-meth docutils literal"><span class="pre">DTufBase.authenticate()</span></tt></a> on <tt class="docutils literal"><span class="pre">dtuf_obj</span></tt> with a username, password and <tt class="docutils literal"><span class="pre">response</span></tt> before it returns.</li>
 <li><strong>insecure</strong> (<em>bool</em>) &#8211; Use HTTP instead of HTTPS (which is the default) when connecting to the registry.</li>
 <li><strong>auth_host</strong> (<em>str</em>) &#8211; Host to use for token authentication. If set, overrides host returned by then registry.</li>
-<li><strong>root_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235">root metadata</a>. After this time expires, you&#8217;ll need to call <a class="reference internal" href="#dtuf.DTufMaster.reset_keys" title="dtuf.DTufMaster.reset_keys"><tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt></a> to re-sign the metadata and then <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt></a> to publish it again. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.ROOT_EXPIRATION</span></tt> (1 year).</li>
+<li><strong>root_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235">root metadata</a>. After this time expires, you&#8217;ll need to call <a class="reference internal" href="#dtuf.DTufMaster.reset_keys" title="dtuf.DTufMaster.reset_keys"><tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt></a> and <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt></a> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.ROOT_EXPIRATION</span></tt> (1 year).</li>
 <li><strong>targets_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L246">targets metadata</a>. After this time expires, you&#8217;ll need to call <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt></a> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.TARGETS_EXPIRATION</span></tt> (3 months).</li>
 <li><strong>snapshot_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L268">snapshot metadata</a>. After this time expires, you&#8217;ll need to call <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt></a> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.SNAPSHOT_EXPIRATION</span></tt> (1 week).</li>
 <li><strong>timestamp_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L276">timestamp metadata</a>. After this time expires, you&#8217;ll need to call <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt></a> to re-sign the metadata. Defaults to <tt class="docutils literal"><span class="pre">tuf.repository_tool.TIMESTAMP_EXPIRATION</span></tt> (1 day).</li>
@@ -317,7 +355,7 @@ repository&#8217;s root and metadata private keys must be available.</p>
 <dd><p>Create TUF metadata keypairs for the repository.</p>
 <p>The keys are written to the <tt class="docutils literal"><span class="pre">&lt;repos_root&gt;/&lt;repo&gt;/master/keys</span></tt> directory. The public keys have a <tt class="docutils literal"><span class="pre">.pub</span></tt> extension.</p>
 <p>You can move the private keys offline once you&#8217;ve called <a class="reference internal" href="#dtuf.DTufMaster.create_metadata" title="dtuf.DTufMaster.create_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">create_metadata()</span></tt></a> but you&#8217;ll need them again when you call <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt></a> to publish the repository.</p>
-<p>You don&#8217;t need to give out the metadata public keys since they&#8217;re published as part of the repository.</p>
+<p>You don&#8217;t need to give out the metadata public keys since they&#8217;re published on the repository.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -406,10 +444,11 @@ metadata.</p>
 <p>The TUF metadata consists of a list of targets (which were uploaded by
 <a class="reference internal" href="#dtuf.DTufMaster.push_target" title="dtuf.DTufMaster.push_target"><tt class="xref py py-meth docutils literal"><span class="pre">push_target()</span></tt></a>), a snapshot of the state of the metadata (list of
 hashes), a timestamp and a list of public keys.</p>
-<p>The list of public keys was signed by the root private key when you
-called <a class="reference internal" href="#dtuf.DTufMaster.create_metadata" title="dtuf.DTufMaster.create_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">create_metadata()</span></tt></a> (or <a class="reference internal" href="#dtuf.DTufMaster.reset_keys" title="dtuf.DTufMaster.reset_keys"><tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt></a>).</p>
-<p>The other metadata will be signed by this function, so you need to
-supply the passwords to the respective private keys.</p>
+<p>This function signs the metadata except for the list of public keys,
+so you&#8217;ll need to supply the password to the respective private keys.</p>
+<p>The list of public keys was signed (along with the rest of the metadata)
+with the root private key when you called <a class="reference internal" href="#dtuf.DTufMaster.create_metadata" title="dtuf.DTufMaster.create_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">create_metadata()</span></tt></a>
+(or <a class="reference internal" href="#dtuf.DTufMaster.reset_keys" title="dtuf.DTufMaster.reset_keys"><tt class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></tt></a>).</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -431,7 +470,7 @@ supply the passwords to the respective private keys.</p>
 <tt class="descname">push_target</tt><big>(</big><em>target</em>, <em>*filename_or_target_list</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#dtuf.DTufMaster.push_target" title="Permalink to this definition">¶</a></dt>
 <dd><p>Upload data to the repository and update the local TUF metadata.</p>
 <p>The metadata isn&#8217;t uploaded until you call <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><tt class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></tt></a>.</p>
-<p>The data is given a name (known as the <em>target</em>) and can come from a
+<p>The data is given a name (known as the <tt class="docutils literal"><span class="pre">target</span></tt>) and can come from a
 list of files or existing target names.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

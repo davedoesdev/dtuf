@@ -29,10 +29,11 @@ def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
     _, target = urlparse.urlparse(url).path.split('//')
     temp_file = tuf.util.TempFile()
     try:
-        if _skip_consistent_target_digest(target) == 0:
+        pos = _skip_consistent_target_digest(target)
+        if pos == 0:
             dgst = _updater_dxf.get_alias(target)[0]
         else:
-            dgst = target[0:target.find('.')]
+            dgst = target[0:pos-1]
         n = 0
         it, size = _updater_dxf.pull_blob(dgst, size=True)
         if _updater_progress:
@@ -257,7 +258,7 @@ class DTufMaster(_DTufCommon):
         :param auth_host: Host to use for token authentication. If set, overrides host returned by then registry.
         :type auth_host: str
 
-        :param root_lifetime: Lifetime of the TUF `root metadata <https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235>`_. After this time expires, you'll need to call :meth:`reset_keys` to re-sign the metadata and then :meth:`push_metadata` to publish it again. Defaults to ``tuf.repository_tool.ROOT_EXPIRATION`` (1 year).
+        :param root_lifetime: Lifetime of the TUF `root metadata <https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235>`_. After this time expires, you'll need to call :meth:`reset_keys` and :meth:`push_metadata` to re-sign the metadata. Defaults to ``tuf.repository_tool.ROOT_EXPIRATION`` (1 year).
         :type root_lifetime: datetime.timedelta
 
         :param targets_lifetime: Lifetime of the TUF `targets metadata <https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L246>`_. After this time expires, you'll need to call :meth:`push_metadata` to re-sign the metadata. Defaults to ``tuf.repository_tool.TARGETS_EXPIRATION`` (3 months).
@@ -324,7 +325,7 @@ class DTufMaster(_DTufCommon):
 
         You can move the private keys offline once you've called :meth:`create_metadata` but you'll need them again when you call :meth:`push_metadata` to publish the repository.
 
-        You don't need to give out the metadata public keys since they're published as part of the repository.
+        You don't need to give out the metadata public keys since they're published on the repository.
 
         :param targets_key_password: Password to use for encrypting the TUF targets private key. You'll be prompted for one if you don't supply it.
         :type password: str
@@ -486,7 +487,7 @@ class DTufMaster(_DTufCommon):
 
         The metadata isn't uploaded until you call :meth:`push_metadata`.
 
-        The data is given a name (known as the *target*) and can come from a
+        The data is given a name (known as the ``target``) and can come from a
         list of files or existing target names.
 
         :param target: Name to give the data.
@@ -565,11 +566,12 @@ class DTufMaster(_DTufCommon):
         :meth:`push_target`), a snapshot of the state of the metadata (list of
         hashes), a timestamp and a list of public keys.
 
-        The list of public keys was signed by the root private key when you
-        called :meth:`create_metadata` (or :meth:`reset_keys`).
+        This function signs the metadata except for the list of public keys,
+        so you'll need to supply the password to the respective private keys.
 
-        The other metadata will be signed by this function, so you need to
-        supply the passwords to the respective private keys.
+        The list of public keys was signed (along with the rest of the metadata)
+        with the root private key when you called :meth:`create_metadata`
+        (or :meth:`reset_keys`).
 
         :param targets_key_password: Password to use for decrypting the TUF targets private key. You'll be prompted for one if you don't supply it.
         :type password: str
@@ -867,13 +869,37 @@ class DTufCopy(_DTufCommon):
                 yield self._dxf.pull_blob(dgst)
 
     def blob_sizes(self, target):
+        """
+        Return the sizes of all the blobs which make up a target.
+
+        :param target: Name of target
+        :type target: str
+
+        :returns: List of blob sizes
+        :rtype: list
+        """
         return [size for _, size in self._get_digests(target, sizes=True)]
 
     def check_target(self, target, *filenames):
+        """
+        Check whether the hashes of a target's blobs match the hashes of a
+        given list of filenames.
+
+        Raises `dxf.exceptions.DXFDigestMismatchError` if they don't.
+
+        :param target: Name of target to check.
+        :type target: str
+
+        :param filenames: Names of files to check against.
+        :type filenames: list
+        """
         blob_dgsts = self._get_digests(target)
-        file_dgsts = [hash_file(filename) for filename in filenames]
-        if file_dgsts != blob_dgsts:
-            raise dxf.exceptions.DXFDigestMismatchError(file_dgsts, blob_dgsts)
+        if len(blob_dgsts) != len(filenames):
+            raise dxf.exceptions.DXFDigestMismatchError(filenames, blob_dgsts)
+        for i, filename in enumerate(filenames):
+            file_dgst = hash_file(filename)
+            if file_dgst != blob_dgsts[i]:
+                raise dxf.exceptions.DXFDigestMismatchError(file_dgst, blob_dgsts[i])
 
     @_copy_repo_locked
     def list_targets(self):

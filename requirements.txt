@@ -1,3 +1,4 @@
+tuf>=0.10.0
 dxf>=1.7.0
 fasteners>=0.14.1
 tqdm>=3.1.4

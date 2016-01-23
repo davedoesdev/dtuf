@@ -337,7 +337,8 @@ def test_lifetime(dtuf_main, capsys):
             dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
         for ex2 in ex.value.mirror_errors.values():
             assert isinstance(ex2, tuf.ExpiredMetadataError)
-            assert str(ex2).startswith("Metadata u'" + role.lower() + "' expired")
+            assert str(ex2).startswith("Metadata u'" + role.lower() + "' expired") or \
+                   str(ex2).startswith("Metadata '" + role.lower() + "' expired")
         capsys.readouterr()
         dtuf.main.doit(['get-master-expirations', pytest.repo], dtuf_main)
         out, err = capsys.readouterr()

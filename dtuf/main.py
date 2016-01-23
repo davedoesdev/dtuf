@@ -26,33 +26,6 @@
 # dtuf get-copy-expirations <repo>     show metadata expiry dates
 # dtuf list-repos                      list all repos (may not all be TUF)
 
-# pass private key password through DTUF_ROOT_KEY_PASSWORD,
-# DTUF_TARGETS_KEY_PASSWORD, DTUF_SNAPSHOT_KEY_PASSWORD and
-# DTUF_TIMESTAMP_KEY_PASSWORD
-
-# pass metadata lifetime through DTUF_ROOT_LIFETIME, DTUF_TARGETS_LIFETIME,
-# DTUF_SNAPSHOT_LIFETIME and DTUF_TIMESTAMP_LIFETIME
-
-# pass repo host through DTUF_HOST
-# to use http, set DTUF_INSECURE to something
-
-# to override token auth server, set DTUF_AUTH_HOST
-
-# pass token through DTUF_TOKEN
-
-# pass repositories directory through DTUF_REPOSITORIES_ROOT
-# (have repo subdirs underneath and then master and copy subdirs under those)
-
-# DTUF_PROGRESS='1' for progress bar on push-target, push-metadata, pull-metadata, ='0' not to show it. Default is to show only if stderr is a terminal
-# and pull-target
-
-# DTUF_BLOB_INFO to prepend digest and size before blob for pull-target
-
-# DTUF_LOG_FILE to set the log file name (default dtuf.log in current directory,
-#               empty string to disable logging)
-# DTUF_FILE_LOG_LEVEL to control what goes to log file
-# DTUF_CONSOLE_LOG_LEVEL to control what goes to console
-
 # pylint: disable=wrong-import-position,wrong-import-order,superfluous-parens
 import os
 import sys
