@@ -330,7 +330,7 @@ exit with `EACCES`.
 ## Installation
 
 ```shell
-pip install python_dtuf
+pip install python-dtuf
 ```
 
 ## Licence
