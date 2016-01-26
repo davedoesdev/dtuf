@@ -273,6 +273,9 @@ the repository on the registry you wish to work with as the second argument.
 
     > Target data is not downloaded - use `dtuf pull-target` for that.
 
+    > A list of targets which have been updated since you last downloaded them
+    > will be printed to standard output, one per line.
+
 -   `dtuf pull-target <repo> <target>...`
 
     > Download targets (data) from the repository to standard output.
