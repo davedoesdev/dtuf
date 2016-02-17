@@ -23,35 +23,46 @@ import dxf.exceptions
 from dtuf import exceptions
 import iso8601
 
-def _download_file(url, required_length, STRICT_REQUIRED_LENGTH=True):
-    import tuf.util
-    import tuf.download
-    _, target = urlparse.urlparse(url).path.split('//')
-    temp_file = tuf.util.TempFile()
-    try:
+class _DTufConnection(object):
+    def __init__(self, url):
+        import tuf.conf
+        self._url = url
+        _, target = urlparse.urlparse(url).path.split('//')
         pos = _skip_consistent_target_digest(target)
         if pos == 0:
-            dgst = _updater_dxf.get_alias(target)[0]
+            self._dgst = _updater_dxf.get_alias(target)[0]
         else:
-            dgst = target[0:pos-1]
-        n = 0
-        it, size = _updater_dxf.pull_blob(dgst, size=True)
+            self._dgst = target[0:pos-1]
+        self._it, self._size = _updater_dxf.pull_blob(
+            self._dgst, size=True, chunk_size=tuf.conf.CHUNK_SIZE)
+        self._it = self._it.__iter__()
+        self._end = object()
+        self._count = 0
         if _updater_progress:
-            _updater_progress(dgst, b'', size)
-        for chunk in it:
-            temp_file.write(chunk)
-            if _updater_progress:
-                _updater_progress(dgst, chunk, size)
-            n += len(chunk)
-            if STRICT_REQUIRED_LENGTH and (n > required_length):
-                break
-        # pylint: disable=protected-access
-        tuf.download._check_downloaded_length(
-            n, required_length, STRICT_REQUIRED_LENGTH=STRICT_REQUIRED_LENGTH)
-        return temp_file
-    except:
-        temp_file.close_temp_file()
-        raise
+            _updater_progress(self._dgst, b'', self._size)
+
+    def info(self):
+        return {'Content-Length': str(self._size)}
+
+    def read(self, _):
+        chunk = next(self._it, self._end)
+        if chunk is self._end:
+            return b''
+        if _updater_progress:
+            _updater_progress(self._dgst, chunk, self._size)
+        self._count += len(chunk)
+        return chunk
+
+    def close(self):
+        # give dxf a chance to check the digest
+        if self._count == self._size:
+            next(self._it, self._end)
+
+    def __str__(self):
+        return "dtuf connection to %s" % self._url
+
+def _open_connection(url):
+    return _DTufConnection(url)
 
 def _is_metadata_file(target):
     return target.endswith('root.json') or \
@@ -98,7 +109,7 @@ def _copy_repo_locked(f, self, *args, **kwargs):
         import tuf.conf
         import tuf.download
         # pylint: disable=protected-access
-        tuf.download._download_file = _download_file
+        tuf.download._open_connection = _open_connection
         global _updater_dxf
         _updater_dxf = self._dxf
         tuf.conf.repository_directory = self._copy_repo_dir
@@ -509,10 +520,10 @@ class DTufMaster(_DTufCommon):
                 with open(path.join(self._master_targets_dir,
                                     filename_or_target[1:]), 'rb') as f:
                     manifest = f.read().decode('utf-8')
-                dgsts += self._dxf.get_alias(manifest=manifest, verify=False)
+                dgsts += self._dxf.get_alias(manifest=manifest)
             else:
                 dgsts.append(self._dxf.push_blob(filename_or_target, progress))
-        manifest = self._dxf.make_unsigned_manifest(target, *dgsts)
+        manifest = self._dxf.make_manifest(*dgsts)
         manifest_filename = path.join(self._master_targets_dir, target)
         with open(manifest_filename, 'wb') as f:
             f.write(manifest.encode('utf-8'))
@@ -546,8 +557,7 @@ class DTufMaster(_DTufCommon):
             if basename[_skip_consistent_target_digest(basename):] == target:
                 remove(f)
         # delete blobs manifest points to
-        for dgst in self._dxf.get_alias(manifest=manifest.decode('utf-8'),
-                                        verify=False):
+        for dgst in self._dxf.get_alias(manifest=manifest.decode('utf-8')):
             self._dxf.del_blob(dgst)
         # delete manifest blob
         self._dxf.del_blob(manifest_dgst)
@@ -839,7 +849,7 @@ class DTufCopy(_DTufCommon):
         updater.download_target(tgt, self._copy_targets_dir)
         with open(path.join(self._copy_targets_dir, target), 'rb') as f:
             manifest = f.read().decode('utf-8')
-        return self._dxf.get_alias(manifest=manifest, verify=False, sizes=sizes)
+        return self._dxf.get_alias(manifest=manifest, sizes=sizes)
 
     def pull_target(self, target, digests_and_sizes=False):
         """

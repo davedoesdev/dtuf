@@ -8,8 +8,8 @@ import errno
 import time
 from datetime import datetime, timedelta, tzinfo
 from io import BytesIO
-import pytest
 import requests
+import pytest
 import tuf
 import tqdm
 import iso8601

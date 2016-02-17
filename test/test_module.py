@@ -2,8 +2,8 @@
 import hashlib
 import shutil
 from os import path
-import pytest
 import requests
+import pytest
 import tuf
 import dxf.exceptions
 import dtuf.exceptions

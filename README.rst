@@ -18,7 +18,7 @@ target files in a Docker registry.
       `this issue <https://github.com/docker/notary/issues/261>`__ for
       discussion.
 
--  Supports Docker registry version 2.
+-  Supports Docker registry version 2.3.0 upwards (schema v2)
 -  Works on Python 2.7 and 3.4.
 
 Examples

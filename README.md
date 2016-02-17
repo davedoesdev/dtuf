@@ -11,7 +11,7 @@ files in a Docker registry.
 - No extra moving parts: just Python client-side and Docker registry server-side.
     - Docker client and daemon not required.
     - [Notary](https://github.com/docker/notary) not required. See [this issue](https://github.com/docker/notary/issues/261) for discussion.
-- Supports Docker registry version 2.
+- Supports Docker registry version 2.3.0 upwards (schema v2)
 - Works on Python 2.7 and 3.4.
 
 ## Examples

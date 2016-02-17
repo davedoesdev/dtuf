@@ -6,7 +6,7 @@ def read(name):
 
 setup(
     name='python_dtuf',
-    version='0.0.7',
+    version='1.0.0',
     description="Docker registry bindings for The Update Framework",
     long_description=read('README.rst'),
     keywords='docker registry tuf update framework',
@@ -17,7 +17,7 @@ setup(
     packages=['dtuf'],
     entry_points={'console_scripts': ['dtuf=dtuf.main:main']},
     install_requires=['tuf>=0.10.0',
-                      'python-dxf>=2.0.5',
+                      'python-dxf>=3.0.0',
                       'fasteners>=0.14.1',
                       'tqdm>=3.1.4',
                       'cryptography>=1.1.2',
