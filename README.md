@@ -1,4 +1,4 @@
-# dtuf&nbsp;&nbsp;&nbsp;[![Build Status](https://travis-ci.org/davedoesdev/dtuf.png)](https://travis-ci.org/davedoesdev/dtuf) [![Coverage Status](https://coveralls.io/repos/davedoesdev/dtuf/badge.png?branch=master)](https://coveralls.io/r/davedoesdev/dtuf?branch=master) [![PyPI version](https://badge.fury.io/py/python_dtuf.png)](http://badge.fury.io/py/python_dtuf)
+# dtuf&nbsp;&nbsp;&nbsp;[![Build Status](https://travis-ci.org/davedoesdev/dtuf.png)](https://travis-ci.org/davedoesdev/dtuf) [![Coverage Status](https://coveralls.io/repos/davedoesdev/dtuf/badge.png?branch=master)](https://coveralls.io/r/davedoesdev/dtuf?branch=master) [![PyPI version](https://badge.fury.io/py/python-dtuf.png)](http://badge.fury.io/py/python-dtuf)
 
 Docker registry bindings for
 [The Update Framework](http://theupdateframework.com/) in Python.
@@ -11,7 +11,7 @@ files in a Docker registry.
 - No extra moving parts: just Python client-side and Docker registry server-side.
     - Docker client and daemon not required.
     - [Notary](https://github.com/docker/notary) not required. See [this issue](https://github.com/docker/notary/issues/261) for discussion.
-- Supports Docker registry version 2.3.0 upwards (schema v2)
+- Supports Docker registry schema v1 and v2.
 - Works on Python 2.7 and 3.4.
 
 ## Examples

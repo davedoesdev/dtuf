@@ -41,7 +41,7 @@ run_test:
 coverage: $(fixtures) run_coverage
 
 .PHONY: run_coverage
-run_coverage: test_args=--cov=dtuf/__init__.py --cov=dtuf/main.py --cov-report=html --cov-report=term --cov-fail-under=90
+run_coverage: test_args=--cov=dtuf --cov-report=html --cov-report=term
 run_coverage: run_test
 
 test/fixtures/blob1:
@@ -54,7 +54,7 @@ test/fixtures/blob4:
 	dd if=/dev/urandom of=$@ bs=1M count=2
 
 $(ca_certs):
-	openssl req -new -x509 -nodes -newkey rsa:4096 -keyout test/ca.key -out test/ca.pem -days 365 -subj "/CN=dxf CA/"
+	openssl req -new -x509 -nodes -newkey rsa:4096 -keyout test/ca.key -out test/ca.pem -days 365 -subj "/CN=dtuf CA/"
 
 $(registry_certs): $(ca_certs)
 	openssl req -new -nodes -newkey rsa:4096 -sha256 -keyout test/registry/registry.key -subj "/CN=localhost/" | openssl x509 -req -extfile <(echo subjectAltName=DNS:localhost) -days 365 -CA test/ca.pem -CAkey test/ca.key -CAcreateserial -out test/registry/registry.pem
@@ -71,9 +71,6 @@ dist: make_dist
 make_dist:
 	python setup.py sdist
 	python setup.py bdist_wheel --universal
-
-register:
-	twine register dist/$(name)-$(version).tar.gz
 
 upload:
 	twine upload dist/$(name)-$(version)*

@@ -1,15 +1,15 @@
 tuf>=0.10.0
-python_dxf>=2.0.5
+python-dxf>=4.0.1
 fasteners>=0.14.1
-tqdm>=3.1.4
-cryptography>=1.1.2
+tqdm>=4.10.0
+cryptography>=1.5
 pytimeparse>=1.1.5
-decorator>=4.0.6
+decorator>=4.0.10
 iso8601>=0.1.11
 pycrypto>=2.6.1
 
-pylint>=1.5.1
-pytest>=2.8.3
-pytest-cov>=2.2.0
+pylint>=1.6.4
+pytest>=3.0.5
+pytest-cov>=2.4.0
 pytest-instafail>=0.3.0
 coveralls>=1.1

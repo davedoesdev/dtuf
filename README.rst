@@ -18,7 +18,7 @@ target files in a Docker registry.
       `this issue <https://github.com/docker/notary/issues/261>`__ for
       discussion.
 
--  Supports Docker registry version 2.3.0 upwards (schema v2)
+-  Supports Docker registry schema v1 and v2.
 -  Works on Python 2.7 and 3.4.
 
 Examples
@@ -423,5 +423,5 @@ Coveralls page is `here <https://coveralls.io/r/davedoesdev/dtuf>`__.
    :target: https://travis-ci.org/davedoesdev/dtuf
 .. |Coverage Status| image:: https://coveralls.io/repos/davedoesdev/dtuf/badge.png?branch=master
    :target: https://coveralls.io/r/davedoesdev/dtuf?branch=master
-.. |PyPI version| image:: https://badge.fury.io/py/python_dtuf.png
-   :target: http://badge.fury.io/py/python_dtuf
+.. |PyPI version| image:: https://badge.fury.io/py/python-dtuf.png
+   :target: http://badge.fury.io/py/python-dtuf

@@ -280,9 +280,3 @@ def test_reset_keys(dtuf_objs):
         assert isinstance(ex2, tuf.CryptoError)
     # pull metadata again with public root key
     assert _pull_metadata_with_master_public_root_key(dtuf_objs) == []
-
-# log test
-# remove tuf.log, dtuf.log - can we do that at start?
-# check here that tuf.log doesn't exist but dtuf.log does
-# check disabling logging too
-
