@@ -81,6 +81,7 @@ def repo_dir(request):
 def _auth(dtuf_obj, response):
     dtuf_obj.authenticate(pytest.username, pytest.password, response=response)
 
+# pylint: disable=redefined-outer-name
 def _setup_fixture(request):
     setattr(request.node, 'rep_failed', False)
     def cleanup():
@@ -123,7 +124,6 @@ for regver in [2, 2.2]:
                             (regver, _auth, False),
                             (regver, _auth, True)])
 
-# pylint: disable=redefined-outer-name
 @pytest.fixture(scope='module', params=_fixture_params)
 def dtuf_objs(repo_dir, request):
     auth, do_token = _setup_fixture(request)
