@@ -88,7 +88,6 @@ def doit(args, environ):
         password = environ.get('DTUF_PASSWORD')
         dtuf_obj.authenticate(username, password, response=response)
 
-    # pylint: disable=redefined-variable-type
     args = parser.parse_args(args)
     if args.op == 'list-repos':
         dtuf_base = dtuf.DTufBase(environ['DTUF_HOST'],

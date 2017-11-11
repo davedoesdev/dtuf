@@ -219,7 +219,7 @@ def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, ca
             assert outs.readline() == expected_dgsts[i].encode('utf-8') + b' ' + str(size).encode('utf-8') + b'\n'
             sha256 = hashlib.sha256()
             sha256.update(outs.read(size))
-            assert sha256.hexdigest() == expected_dgsts[i]
+            assert 'sha256:' + sha256.hexdigest() == expected_dgsts[i]
         assert len(outs.read()) == 0
     else:
         pos = 0
@@ -227,7 +227,7 @@ def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, ca
             sha256 = hashlib.sha256()
             sha256.update(out[pos:pos + size])
             pos += size
-            assert sha256.hexdigest() == expected_dgsts[i]
+            assert 'sha256:' + sha256.hexdigest() == expected_dgsts[i]
         assert pos == len(out)
     assert err == ""
     capfd._capture.out.tmpfile.encoding = encoding

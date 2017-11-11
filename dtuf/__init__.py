@@ -18,7 +18,7 @@ from os import path, getcwd, remove, makedirs, listdir
 from datetime import datetime, timedelta
 from decorator import decorator
 import fasteners
-from dxf import DXFBase, DXF, hash_file, hash_bytes
+from dxf import DXFBase, DXF, hash_file, hash_bytes, split_digest
 import dxf.exceptions
 from dtuf import exceptions
 import iso8601
@@ -32,7 +32,7 @@ class _DTufConnection(object):
         if pos == 0:
             self._dgst = _updater_dxf.get_alias(target)[0]
         else:
-            self._dgst = target[0:pos-1]
+            self._dgst = 'sha256:' + target[0:pos-1]
         self._it, self._size = _updater_dxf.pull_blob(
             self._dgst, size=True, chunk_size=tuf.conf.CHUNK_SIZE)
         self._it = self._it.__iter__()
@@ -651,7 +651,8 @@ class DTufMaster(_DTufCommon):
         with open(path.join(self._master_staged_dir, 'timestamp.json'), 'rb') as f:
             timestamp_data = f.read()
         # hash of content is timestamp prefix
-        timestamp_cs = hash_bytes(timestamp_data) + '.timestamp.json'
+        _, dgst = split_digest(hash_bytes(timestamp_data))
+        timestamp_cs = dgst + '.timestamp.json'
         files = [timestamp_cs]
         # parse timestamp data
         timestamp = json.loads(timestamp_data.decode('utf-8'))
@@ -670,8 +671,7 @@ class DTufMaster(_DTufCommon):
         files.append(root_cs)
         # Upload metadata
         for f in files:
-            dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
-                                       progress)
+            self._dxf.push_blob(path.join(self._master_staged_dir, f), progress)
 
     @_master_repo_locked
     def list_targets(self):
@@ -833,7 +833,6 @@ class DTufCopy(_DTufCommon):
         updated_targets = updater.updated_targets(
             targets, self._copy_targets_dir)
         if path.isdir(self._copy_targets_dir):
-            # pylint: disable=redefined-variable-type
             targets = dict([(t['filepath'][1:], True) for t in targets])
             for t in listdir(self._copy_targets_dir):
                 if t not in targets:

@@ -86,6 +86,7 @@ def _pull_metadata_with_master_public_root_key(dtuf_objs):
     with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
         return dtuf_objs.copy.pull_metadata(f.read().decode('utf-8'))
 
+#@pytest.mark.onlytest
 def test_pull_metadata(dtuf_objs):
     exists = _copy_metadata_exists(dtuf_objs, 'root')
     with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError) as ex:
@@ -124,14 +125,14 @@ def _pull_target(dtuf_objs, target, expected_dgsts, expected_sizes):
             for chunk in it:
                 sha256.update(chunk)
                 n += len(chunk)
-            assert sha256.hexdigest() == dgst
+            assert 'sha256:' + sha256.hexdigest() == dgst
             assert n == size
     else:
         for i, it in enumerate(its):
             sha256 = hashlib.sha256()
             for chunk in it:
                 sha256.update(chunk)
-            assert sha256.hexdigest() == expected_dgsts[i]
+            assert 'sha256:' + sha256.hexdigest() == expected_dgsts[i]
 
 def _dummy_pull_target(dtuf_objs, target, n):
     orig_sha256 = hashlib.sha256
@@ -165,12 +166,12 @@ def test_pull_target(dtuf_objs):
     _pull_target(dtuf_objs, 'foobar', [pytest.blob1_hash, pytest.blob2_hash], [pytest.blob1_size, pytest.blob2_size])
     with pytest.raises(dxf.exceptions.DXFDigestMismatchError) as ex:
         _dummy_pull_target(dtuf_objs, 'hello', 2)
-    assert ex.value.got == hashlib.sha256().hexdigest()
+    assert ex.value.got == 'sha256:' + hashlib.sha256().hexdigest()
     assert ex.value.expected == pytest.blob1_hash
     with pytest.raises(tuf.NoWorkingMirrorError) as ex:
         _dummy_pull_target(dtuf_objs, 'hello', 1)
     for ex2 in ex.value.mirror_errors.values():
-        assert ex2.got == hashlib.sha256().hexdigest()
+        assert ex2.got == 'sha256:' + hashlib.sha256().hexdigest()
         assert ex2.expected == dxf.hash_file(path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'targets', 'hello'))
 
 def test_update(dtuf_objs):

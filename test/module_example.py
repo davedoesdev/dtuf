@@ -4,7 +4,7 @@
 # $DOCKER_HUB_REPO should have been created on Docker Hub
 
 # pylint: disable=wrong-import-position,superfluous-parens
-# pylint: disable=redefined-outer-name,redefined-variable-type
+# pylint: disable=redefined-outer-name
 import os
 from os import path
 import sys
