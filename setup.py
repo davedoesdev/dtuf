@@ -22,5 +22,6 @@ setup(
                       'tqdm>=4.10.0',
                       'pytimeparse>=1.1.5',
                       'decorator>=4.0.10',
-                      'iso8601>=0.1.11']
+                      'iso8601>=0.1.11',
+                      'cryptography>=1.5']
 )
