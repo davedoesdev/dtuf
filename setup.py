@@ -23,5 +23,6 @@ setup(
                       'pytimeparse>=1.1.5',
                       'decorator>=4.0.10',
                       'iso8601>=0.1.11',
-                      'cryptography>=1.5']
+                      'cryptography>=1.5',
+                      'pycryptodome>=3.4.7']
 )
