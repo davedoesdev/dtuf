@@ -7,6 +7,7 @@ import pytest
 import tuf
 import dxf.exceptions
 import dtuf.exceptions
+import securesystemslib.exceptions
 
 def _check_key_exists(dtuf_objs, key):
     assert path.exists(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', key + '_key'))
@@ -21,17 +22,17 @@ def _copy_metadata_exists(dtuf_objs, metadata):
 def test_not_found(dtuf_objs):
     exists = _copy_metadata_exists(dtuf_objs, 'root')
     for target in ['never added', 'hello']:
-        with pytest.raises(tuf.UnknownTargetError if exists else tuf.RepositoryError) as ex:
+        with pytest.raises(tuf.exceptions.UnknownTargetError if exists else tuf.exceptions.RepositoryError) as ex:
             dtuf_objs.copy.blob_sizes(target)
     for target in ['there', 'foobar']:
         if exists:
-            with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+            with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
                 dtuf_objs.copy.blob_sizes(target)
             for ex2 in ex.value.mirror_errors.values():
                 assert isinstance(ex2, requests.exceptions.HTTPError)
                 assert ex2.response.status_code == requests.codes.not_found
         else:
-            with pytest.raises(tuf.RepositoryError):
+            with pytest.raises(tuf.exceptions.RepositoryError):
                 dtuf_objs.copy.blob_sizes(target)
 
 def test_create_root_key(dtuf_objs):
@@ -86,26 +87,25 @@ def _pull_metadata_with_master_public_root_key(dtuf_objs):
     with open(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', 'root_key.pub'), 'rb') as f:
         return dtuf_objs.copy.pull_metadata(f.read().decode('utf-8'))
 
-#@pytest.mark.onlytest
 def test_pull_metadata(dtuf_objs):
     exists = _copy_metadata_exists(dtuf_objs, 'root')
-    with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError) as ex:
+    with pytest.raises(tuf.exceptions.NoWorkingMirrorError if exists else tuf.exceptions.RepositoryError) as ex:
         dtuf_objs.copy.pull_metadata()
     if exists:
         for ex2 in ex.value.mirror_errors.values():
-            assert isinstance(ex2, tuf.ReplayedMetadataError)
-            assert ex2.metadata_role == 'timestamp'
-            assert ex2.previous_version == 2 # create=1, push=2
-            assert ex2.current_version == 8
-        # Because of test_update below, the copy's current metadata will have
-        # a higher version number than the newly-created and pushed master
-        # metadata. That will generate a ReplayedMetadata error.
+            # Because of test_update below, the copy's current metadata will
+            # have a higher version number than the newly-created and pushed
+            # master metadata. That will generate a ReplayedMetadata error.
+            assert isinstance(ex2, tuf.exceptions.ReplayedMetadataError)
+            assert ex2.metadata_role == 'root'
+            assert ex2.previous_version == 1
+            assert ex2.current_version == 3
         dir_name = path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
     else:
         assert str(ex.value) == 'No root of trust! Could not find the "root.json" file.'
-    with pytest.raises(tuf.CryptoError):
+    with pytest.raises(tuf.exceptions.CryptoError):
         dtuf_objs.copy.pull_metadata(pytest.make_dummy_root_pub_key())
     assert sorted(_pull_metadata_with_master_public_root_key(dtuf_objs)) == \
         (['foobar', 'hello'] if exists else ['foobar', 'hello', 'there'])
@@ -155,7 +155,7 @@ def _dummy_pull_target(dtuf_objs, target, n):
         hashlib.sha256 = orig_sha256
 
 def test_pull_target(dtuf_objs):
-    with pytest.raises(tuf.UnknownTargetError):
+    with pytest.raises(tuf.exceptions.UnknownTargetError):
         for _ in dtuf_objs.copy.pull_target('dummy'):
             pass
     _pull_target(dtuf_objs, 'hello', [pytest.blob1_hash], None)
@@ -168,7 +168,7 @@ def test_pull_target(dtuf_objs):
         _dummy_pull_target(dtuf_objs, 'hello', 2)
     assert ex.value.got == 'sha256:' + hashlib.sha256().hexdigest()
     assert ex.value.expected == pytest.blob1_hash
-    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+    with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
         _dummy_pull_target(dtuf_objs, 'hello', 1)
     for ex2 in ex.value.mirror_errors.values():
         assert ex2.got == 'sha256:' + hashlib.sha256().hexdigest()
@@ -237,6 +237,7 @@ def test_del_target(dtuf_objs):
                                    pytest.timestamp_key_password)
     assert sorted(dtuf_objs.master.list_targets()) == ['foobar', 'there']
 
+#@pytest.mark.onlytest
 def test_reset_keys(dtuf_objs):
     # create new non-root keys
     dtuf_objs.master.create_metadata_keys(pytest.targets_key_password,
@@ -252,14 +253,11 @@ def test_reset_keys(dtuf_objs):
                                    pytest.snapshot_key_password,
                                    pytest.timestamp_key_password)
     # pull metadata
-    # this will fail even though we didn't change the root key because root.json
-    # has been updated (it stores the other public keys); unless we pass in
-    # the root public key, we don't update root.json
-    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
-        dtuf_objs.copy.pull_metadata()
-    for ex2 in ex.value.mirror_errors.values():
-        assert isinstance(ex2, tuf.CryptoError)
-    # pull metadata again with public root key
+    # this succeeds even though root.json has been updated (it stores the other
+    # public keys) because tuf downloads the new root.json and verifies it using
+    # the root public key from the existing root.json
+    dtuf_objs.copy.pull_metadata()
+    # pull metadata again with public root key to force verfication against it
     assert _pull_metadata_with_master_public_root_key(dtuf_objs) == []
     # create new root key
     dtuf_objs.master.create_root_key(pytest.root_key_password)
@@ -274,10 +272,11 @@ def test_reset_keys(dtuf_objs):
                                    pytest.timestamp_key_password)
     # pull metadata
     # this will fail because root.json has been updated; unless we pass in the
-    # root public key, we don't update root.json
-    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+    # root public key, the root public key from the existing root.json will
+    # be used to verify the new root.json (which fails)
+    with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
         dtuf_objs.copy.pull_metadata()
     for ex2 in ex.value.mirror_errors.values():
-        assert isinstance(ex2, tuf.CryptoError)
+        assert isinstance(ex2, securesystemslib.exceptions.BadSignatureError)
     # pull metadata again with public root key
     assert _pull_metadata_with_master_public_root_key(dtuf_objs) == []

@@ -34,9 +34,9 @@ _remove_container = os.path.join(_here, 'remove_container.sh')
 DEVNULL = open(os.devnull, 'wb')
 
 def make_dummy_root_pub_key():
-    import tuf.keys
     import tuf.repository_lib
-    return tuf.keys.generate_rsa_key(tuf.repository_lib.DEFAULT_RSA_KEY_BITS)['keyval']['public']
+    import securesystemslib.keys
+    return securesystemslib.keys.generate_rsa_key(tuf.repository_lib.DEFAULT_RSA_KEY_BITS)['keyval']['public']
 
 def pytest_namespace():
     return {

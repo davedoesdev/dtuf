@@ -15,6 +15,7 @@ import tqdm
 import iso8601
 import dxf.exceptions
 import dtuf.main
+import securesystemslib.exceptions
 
 class _UTC(tzinfo):
     # pylint: disable=unused-argument
@@ -154,17 +155,20 @@ def _pull_metadata_with_master_public_root_key(dtuf_main):
 
 def test_pull_metadata(dtuf_main, monkeypatch, capsys):
     exists = _copy_metadata_exists(dtuf_main, 'root')
-    with pytest.raises(tuf.NoWorkingMirrorError if exists else tuf.RepositoryError) as ex:
+    with pytest.raises(tuf.exceptions.NoWorkingMirrorError if exists else tuf.exceptions.RepositoryError) as ex:
         dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
     if exists:
-        # Because of test_reset_keys below, the copy's current metadata will
-        # have a higher version number than the newly-created and pushed master
-        # metadata. That will generate a ReplayedMetadata error.
+        # pylint: disable=unnecessary-pass
+        pass # can't disable pylint duplicate-code warning
+             # https://github.com/PyCQA/pylint/issues/214
         for ex2 in ex.value.mirror_errors.values():
-            assert isinstance(ex2, tuf.ReplayedMetadataError)
-            assert ex2.metadata_role == 'timestamp'
-            assert ex2.previous_version == 4 # create=1, push=2
-            assert ex2.current_version == 17
+            # Because of test_reset_keys below, the copy's current metadata will
+            # have a higher version number than the newly-created and pushed
+            # master metadata. That will generate a ReplayedMetadata error.
+            assert isinstance(ex2, tuf.exceptions.ReplayedMetadataError)
+            assert ex2.metadata_role == 'root'
+            assert ex2.previous_version == 1
+            assert ex2.current_version == 7
         dir_name = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
@@ -177,7 +181,7 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
         def read(self):
             return pytest.make_dummy_root_pub_key()
     monkeypatch.setattr(sys, 'stdin', FakeStdin())
-    with pytest.raises(tuf.CryptoError):
+    with pytest.raises(tuf.exceptions.CryptoError):
         assert dtuf.main.doit(['pull-metadata', pytest.repo, '-'], dtuf_main) == 0
     capsys.readouterr()
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
@@ -233,7 +237,7 @@ def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, ca
     capfd._capture.out.tmpfile.encoding = encoding
 
 def test_pull_target(dtuf_main, capfd):
-    with pytest.raises(tuf.UnknownTargetError):
+    with pytest.raises(tuf.exceptions.UnknownTargetError):
         dtuf.main.doit(['pull-target', pytest.repo, 'dummy'], dtuf_main)
     capfd.readouterr()
     for get_info in [False, True]:
@@ -333,10 +337,10 @@ def test_lifetime(dtuf_main, capsys):
         assert dtuf.main.doit(['reset-keys', pytest.repo], environ) == 0
         test_push_metadata(environ)
         time.sleep(2)
-        with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+        with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
             dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
         for ex2 in ex.value.mirror_errors.values():
-            assert isinstance(ex2, tuf.ExpiredMetadataError)
+            assert isinstance(ex2, tuf.exceptions.ExpiredMetadataError)
             assert str(ex2).startswith("Metadata u'" + role.lower() + "' expired") or \
                    str(ex2).startswith("Metadata '" + role.lower() + "' expired")
         capsys.readouterr()
@@ -389,10 +393,10 @@ def test_reset_keys(dtuf_main, capsys):
     # this will fail even though we didn't change the root key because root.json
     # has been updated (it stores the other public keys); unless we pass in
     # the root public key, we don't update root.json
-    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+    with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
         dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
     for ex2 in ex.value.mirror_errors.values():
-        assert isinstance(ex2, tuf.CryptoError)
+        assert isinstance(ex2, securesystemslib.exceptions.BadSignatureError)
     capsys.readouterr()
     # pull metadata again with public root key
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
@@ -415,10 +419,10 @@ def test_reset_keys(dtuf_main, capsys):
     # pull metadata
     # this will fail because root.json has been updated; unless we pass in the
     # root public key, we don't update root.json
-    with pytest.raises(tuf.NoWorkingMirrorError) as ex:
+    with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
         dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
     for ex2 in ex.value.mirror_errors.values():
-        assert isinstance(ex2, tuf.CryptoError)
+        assert isinstance(ex2, securesystemslib.exceptions.BadSignatureError)
     capsys.readouterr()
     # pull metadata again with public root key
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
@@ -474,6 +478,7 @@ def test_auth_host(dtuf_main):
             dtuf.main.doit(['list-repos'], environ)
 
 # pylint: disable=unused-argument
+#@pytest.mark.onlytest
 def test_log(dtuf_main):
     assert path.exists('dtuf.log')
     assert not path.exists('tuf.log')

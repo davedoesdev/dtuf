@@ -22,10 +22,13 @@ from dxf import DXFBase, DXF, hash_file, hash_bytes, split_digest
 import dxf.exceptions
 from dtuf import exceptions
 import iso8601
+import securesystemslib.util
+import securesystemslib.settings
+securesystemslib.settings.HASH_ALGORITHMS = ['sha256']
 
 class _DTufConnection(object):
     def __init__(self, url):
-        import tuf.conf
+        import tuf.settings
         self._url = url
         _, target = urlparse.urlparse(url).path.split('//')
         pos = _skip_consistent_target_digest(target)
@@ -34,7 +37,7 @@ class _DTufConnection(object):
         else:
             self._dgst = 'sha256:' + target[0:pos-1]
         self._it, self._size = _updater_dxf.pull_blob(
-            self._dgst, size=True, chunk_size=tuf.conf.CHUNK_SIZE)
+            self._dgst, size=True, chunk_size=tuf.settings.CHUNK_SIZE)
         self._it = self._it.__iter__()
         self._end = object()
         self._count = 0
@@ -77,14 +80,14 @@ _updater_progress = None
 def _tuf_clear():
     import tuf.keydb
     import tuf.roledb
-    import tuf.conf
+    import tuf.settings
     # pylint: disable=global-statement
     global _updater_dxf, _updater_progress
     _updater_dxf = None
     _updater_progress = None
     tuf.keydb.clear_keydb()
     tuf.roledb.clear_roledb()
-    tuf.conf.repository_directory = None
+    tuf.settings.repositories_directory = None
 
 def _locked(lock, setup, f, self, *args, **kwargs):
     with _tuf_lock:
@@ -106,13 +109,13 @@ def _master_repo_locked(f, self, *args, **kwargs):
 def _copy_repo_locked(f, self, *args, **kwargs):
     # pylint: disable=global-statement,protected-access
     def setup():
-        import tuf.conf
+        import tuf.settings
         import tuf.download
         # pylint: disable=protected-access
         tuf.download._open_connection = _open_connection
         global _updater_dxf
         _updater_dxf = self._dxf
-        tuf.conf.repository_directory = self._copy_repo_dir
+        tuf.settings.repositories_directory = self._copy_dir
     return _locked(self._copy_repo_lock, setup, f, self, *args, **kwargs)
 
 _consistent_prefix_re = re.compile(r'[a-f0-9]{' +
@@ -416,7 +419,7 @@ class DTufMaster(_DTufCommon):
         repository.timestamp.load_signing_key(private_timestamp_key)
 
         # Write out metadata
-        repository.write(consistent_snapshot=True)
+        repository.writeall(consistent_snapshot=True)
 
     @_master_repo_locked
     def create_metadata(self,
@@ -638,9 +641,11 @@ class DTufMaster(_DTufCommon):
         repository.timestamp.load_signing_key(private_timestamp_key)
 
         # Update metadata
-        repository.write(consistent_snapshot=True)
+        repository.write('targets', consistent_snapshot=True)
+        repository.write('snapshot', consistent_snapshot=True)
+        repository.write('timestamp', consistent_snapshot=True)
 
-        # Upload root.json and timestamp.json without hash prefix
+        # Upload root.json and timestamp.json without version prefix
         for f in ['root.json', 'timestamp.json']:
             dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
                                        progress)
@@ -649,29 +654,23 @@ class DTufMaster(_DTufCommon):
         # Upload consistent snapshot versions of current metadata files...
         # first load timestamp.json
         with open(path.join(self._master_staged_dir, 'timestamp.json'), 'rb') as f:
-            timestamp_data = f.read()
-        # hash of content is timestamp prefix
-        _, dgst = split_digest(hash_bytes(timestamp_data))
-        timestamp_cs = dgst + '.timestamp.json'
-        files = [timestamp_cs]
-        # parse timestamp data
-        timestamp = json.loads(timestamp_data.decode('utf-8'))
+            timestamp = json.loads(f.read().decode('utf-8'))
+        # get timestamp prefix
+        files = ['{}.timestamp.json'.format(timestamp['signed']['version'])]
         # get snapshot prefix
-        snapshot_cs = timestamp['signed']['meta']['snapshot.json']['hashes']['sha256'] + '.snapshot.json'
+        snapshot_cs = '{}.snapshot.json'.format(timestamp['signed']['meta']['snapshot.json']['version'])
         files.append(snapshot_cs)
         # load prefixed snapshot.json
         with open(path.join(self._master_staged_dir, snapshot_cs), 'rb') as f:
-            snapshot_data = f.read()
-        # parse snapshot data
-        snapshot = json.loads(snapshot_data.decode('utf-8'))
+            snapshot = json.loads(f.read().decode('utf-8'))
         # get targets and root prefixes
-        targets_cs = snapshot['signed']['meta']['targets.json']['hashes']['sha256'] + '.targets.json'
-        files.append(targets_cs)
-        root_cs = snapshot['signed']['meta']['root.json']['hashes']['sha256'] + '.root.json'
-        files.append(root_cs)
+        files.append('{}.targets.json'.format(snapshot['signed']['meta']['targets.json']['version']))
+        files.append('{}.root.json'.format(snapshot['signed']['meta']['root.json']['version']))
         # Upload metadata
         for f in files:
-            self._dxf.push_blob(path.join(self._master_staged_dir, f), progress)
+            dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
+                                       progress)
+            self._dxf.set_alias(f, dgst)
 
     @_master_repo_locked
     def list_targets(self):
@@ -773,10 +772,9 @@ class DTufCopy(_DTufCommon):
         import tuf.keydb
         import tuf.roledb
         import tuf.client.updater
-        import tuf.util
         import tuf.formats
         import tuf.sig
-        from tuf import BadSignatureError
+        from tuf.exceptions import BadSignatureError
         # pylint: disable=global-statement
         global _updater_progress
         _updater_progress = progress
@@ -792,7 +790,7 @@ class DTufCopy(_DTufCommon):
         # the public key.
         if root_public_key:
             dgst = self._dxf.get_alias('root.json')[0]
-            temp_file = tuf.util.TempFile()
+            temp_file = securesystemslib.util.TempFile()
             try:
                 it, size = self._dxf.pull_blob(dgst, size=True)
                 _write_with_progress(it, dgst, size, temp_file, progress)
@@ -810,6 +808,7 @@ class DTufCopy(_DTufCommon):
                 keyid = metadata_signable['signatures'][0]['keyid']
                 tuf.keydb.add_key({
                     'keytype': 'rsa',
+                    'scheme': metadata_signable['signed']['keys'][keyid]['scheme'],
                     'keyid': keyid,
                     'keyval': {'public': root_public_key}
                 }, keyid)
@@ -826,7 +825,7 @@ class DTufCopy(_DTufCommon):
             except:
                 temp_file.close_temp_file()
                 raise
-        updater = tuf.client.updater.Updater('updater',
+        updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
         updater.refresh(False)
         targets = updater.all_targets()
@@ -842,9 +841,9 @@ class DTufCopy(_DTufCommon):
     @_copy_repo_locked
     def _get_digests(self, target, sizes=False):
         import tuf.client.updater
-        updater = tuf.client.updater.Updater('updater',
+        updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
-        tgt = updater.target(target)
+        tgt = updater.get_one_valid_targetinfo(target)
         updater.download_target(tgt, self._copy_targets_dir)
         with open(path.join(self._copy_targets_dir, target), 'rb') as f:
             manifest = f.read().decode('utf-8')
@@ -920,7 +919,7 @@ class DTufCopy(_DTufCommon):
         :rtype: list
         """
         import tuf.client.updater
-        updater = tuf.client.updater.Updater('updater',
+        updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
         return [t['filepath'][1:] for t in updater.all_targets()]
 
@@ -933,7 +932,7 @@ class DTufCopy(_DTufCommon):
         :rtype: dict
         """
         import tuf.client.updater
-        updater = tuf.client.updater.Updater('updater',
+        updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
         metadata = updater.metadata['current']
         return {

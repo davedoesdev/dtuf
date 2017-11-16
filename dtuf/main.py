@@ -48,12 +48,12 @@ def get_lifetime(environ, role):
 
 # pylint: disable=too-many-statements,too-many-locals
 def doit(args, environ):
-    import tuf.conf
+    import tuf.settings
     log_file = environ.get('DTUF_LOG_FILE', 'dtuf.log')
     if log_file:
-        tuf.conf.LOG_FILENAME = log_file
+        tuf.settings.LOG_FILENAME = log_file
     else:
-        tuf.conf.ENABLE_FILE_LOGGING = False
+        tuf.settings.ENABLE_FILE_LOGGING = False
 
     import tuf.log
     if log_file:
@@ -251,7 +251,7 @@ def doit(args, environ):
         return 0
     except dxf.exceptions.DXFUnauthorizedError:
         return access_denied()
-    except tuf.NoWorkingMirrorError as ex:
+    except tuf.exceptions.NoWorkingMirrorError as ex:
         for ex2 in ex.mirror_errors.values():
             if isinstance(ex2, dxf.exceptions.DXFUnauthorizedError):
                 return access_denied()
