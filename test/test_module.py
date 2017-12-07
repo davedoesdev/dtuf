@@ -213,13 +213,11 @@ def test_context_manager(dtuf_objs):
 def _auth(dtuf_objs, obj_type):
     obj = getattr(dtuf_objs, obj_type)
     # pylint: disable=protected-access
-    if obj._dxf._insecure:
-        with pytest.raises(dxf.exceptions.DXFAuthInsecureError):
-            obj.authenticate(pytest.username, pytest.password)
-    elif dtuf_objs.do_token:
+    if dtuf_objs.do_token:
         assert obj.authenticate(pytest.username, pytest.password, '*') == obj.token
         assert obj.token
     else:
+        # In conftest.py, we configure SSL _and_ auth, or neither
         assert obj.authenticate(pytest.username, pytest.password) is None
 
 def test_auth(dtuf_objs):

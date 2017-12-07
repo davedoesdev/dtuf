@@ -293,15 +293,7 @@ def test_list_repos(dtuf_main, capsys):
     assert err == ""
 
 def test_auth(dtuf_main, capsys):
-    if dtuf_main['DTUF_INSECURE'] == '1':
-        environ = {
-            'DTUF_USERNAME': pytest.username,
-            'DTUF_PASSWORD': pytest.password
-        }
-        environ.update(dtuf_main)
-        with pytest.raises(dxf.exceptions.DXFAuthInsecureError):
-            dtuf.main.doit(['auth', pytest.repo], environ)
-    elif dtuf_main['TEST_DO_TOKEN']:
+    if dtuf_main['TEST_DO_TOKEN']:
         assert dtuf.main.doit(['auth', pytest.repo, '*'], dtuf_main) == 0
         token, err = capsys.readouterr()
         assert token
@@ -319,7 +311,12 @@ def test_auth(dtuf_main, capsys):
         assert out == str(pytest.blob1_size) + os.linesep
         assert err == ""
     else:
-        assert dtuf.main.doit(['auth', pytest.repo], dtuf_main) == 0
+        environ = {
+            'DTUF_USERNAME': pytest.username,
+            'DTUF_PASSWORD': pytest.password
+        }
+        environ.update(dtuf_main)
+        assert dtuf.main.doit(['auth', pytest.repo], environ) == 0
         out, err = capsys.readouterr()
         assert out == ""
         assert err == ""

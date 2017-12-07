@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>dtuf module &#8212; dtuf 0.0.1 documentation</title>
+    <title>dtuf module &#8212; dtuf 3.1.0 documentation</title>
     
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.0.1',
+        VERSION:     '3.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -37,7 +37,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">dtuf 0.0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">dtuf 3.1.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -88,7 +88,7 @@ won&#8217;t be closed until Python garbage collects the iterator.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>host</strong> (<em>str</em>) &#8211; Host name of registry. Can contain port numbers. e.g. <code class="docutils literal"><span class="pre">registry-1.docker.io</span></code>, <code class="docutils literal"><span class="pre">localhost:5000</span></code>.</li>
-<li><strong>auth</strong> (<em>function</em><em>(</em><em>dtuf_obj</em><em>, </em><em>response</em><em>)</em><em></em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><code class="xref py py-class docutils literal"><span class="pre">DTufBase</span></code></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><code class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></code></a> on <code class="docutils literal"><span class="pre">dtuf_obj</span></code> with a username, password and <code class="docutils literal"><span class="pre">response</span></code> before it returns.</li>
+<li><strong>auth</strong> (<em>function</em><em>(</em><em>dtuf_obj</em><em>, </em><em>response</em><em>)</em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><code class="xref py py-class docutils literal"><span class="pre">DTufBase</span></code></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><code class="xref py py-meth docutils literal"><span class="pre">authenticate()</span></code></a> on <code class="docutils literal"><span class="pre">dtuf_obj</span></code> with a username, password and <code class="docutils literal"><span class="pre">response</span></code> before it returns.</li>
 <li><strong>insecure</strong> (<em>bool</em>) &#8211; Use HTTP instead of HTTPS (which is the default) when connecting to the registry.</li>
 <li><strong>auth_host</strong> (<em>str</em>) &#8211; Host to use for token authentication. If set, overrides host returned by then registry.</li>
 </ul>
@@ -163,7 +163,7 @@ previously, you can also set it but be aware tokens expire quickly.</p>
 <li><strong>host</strong> (<em>str</em>) &#8211; Host name of registry. Can contain port numbers. e.g. <code class="docutils literal"><span class="pre">registry-1.docker.io</span></code>, <code class="docutils literal"><span class="pre">localhost:5000</span></code>.</li>
 <li><strong>repo</strong> (<em>str</em>) &#8211; Name of the repository to access on the registry. Typically this is of the form <code class="docutils literal"><span class="pre">username/reponame</span></code> but for your own registries you don&#8217;t actually have to stick to that. The repository is used to retrieve data and TUF metadata describing the data.</li>
 <li><strong>repos_root</strong> (<em>str</em>) &#8211; Directory under which to store TUF metadata. Note that the value of <code class="docutils literal"><span class="pre">repo</span></code> and the literal string <code class="docutils literal"><span class="pre">copy</span></code> are appended to this directory name before storing the metadata. Defaults to <code class="docutils literal"><span class="pre">dtuf_repos</span></code> in the current working directory.</li>
-<li><strong>auth</strong> (<em>function</em><em>(</em><em>dtuf_obj</em><em>, </em><em>response</em><em>)</em><em></em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><code class="xref py py-class docutils literal"><span class="pre">DTufBase</span></code></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><code class="xref py py-meth docutils literal"><span class="pre">DTufBase.authenticate()</span></code></a> with a username, password and <code class="docutils literal"><span class="pre">response</span></code> before it returns.</li>
+<li><strong>auth</strong> (<em>function</em><em>(</em><em>dtuf_obj</em><em>, </em><em>response</em><em>)</em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><code class="xref py py-class docutils literal"><span class="pre">DTufBase</span></code></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><code class="xref py py-meth docutils literal"><span class="pre">DTufBase.authenticate()</span></code></a> with a username, password and <code class="docutils literal"><span class="pre">response</span></code> before it returns.</li>
 <li><strong>insecure</strong> (<em>bool</em>) &#8211; Use HTTP instead of HTTPS (which is the default) when connecting to the registry.</li>
 <li><strong>auth_host</strong> (<em>str</em>) &#8211; Host to use for token authentication. If set, overrides host returned by then registry.</li>
 </ul>
@@ -257,7 +257,7 @@ it from the person who uploaded the metadata.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>root_public_key</strong> (<em>str</em>) &#8211; PEM-encoded root public key. Obtain this from the repository&#8217;s owner, who generates the key using <a class="reference internal" href="#dtuf.DTufMaster.create_root_key" title="dtuf.DTufMaster.create_root_key"><code class="xref py py-meth docutils literal"><span class="pre">DTufMaster.create_root_key()</span></code></a> on the repository master.</li>
-<li><strong>progress</strong> (<em>function</em><em>(</em><em>dgst</em><em>, </em><em>chunk</em><em>, </em><em>total</em><em>)</em><em></em>) &#8211; Optional function to call as the download progresses. The function will be called with the hash of the metadata currently being download, the blob just read from the repository and the total size of the metadata.</li>
+<li><strong>progress</strong> (<em>function</em><em>(</em><em>dgst</em><em>, </em><em>chunk</em><em>, </em><em>total</em><em>)</em>) &#8211; Optional function to call as the download progresses. The function will be called with the hash of the metadata currently being download, the blob just read from the repository and the total size of the metadata.</li>
 </ul>
 </td>
 </tr>
@@ -317,7 +317,7 @@ Docker registry using
 <li><strong>host</strong> (<em>str</em>) &#8211; Host name of registry. Can contain port numbers. e.g. <code class="docutils literal"><span class="pre">registry-1.docker.io</span></code>, <code class="docutils literal"><span class="pre">localhost:5000</span></code>.</li>
 <li><strong>repo</strong> (<em>str</em>) &#8211; Name of the repository to access on the registry. Typically this is of the form <code class="docutils literal"><span class="pre">username/reponame</span></code> but for your own registries you don&#8217;t actually have to stick to that. The repository is used to store data and TUF metadata describing the data.</li>
 <li><strong>repos_root</strong> (<em>str</em>) &#8211; Directory under which to store TUF metadata. Note that the value of <code class="docutils literal"><span class="pre">repo</span></code> and the literal string <code class="docutils literal"><span class="pre">master</span></code> are appended to this directory name before storing the metadata. Defaults to <code class="docutils literal"><span class="pre">dtuf_repos</span></code> in the current working directory.</li>
-<li><strong>auth</strong> (<em>function</em><em>(</em><em>dtuf_obj</em><em>, </em><em>response</em><em>)</em><em></em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><code class="xref py py-class docutils literal"><span class="pre">DTufBase</span></code></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><code class="xref py py-meth docutils literal"><span class="pre">DTufBase.authenticate()</span></code></a> on <code class="docutils literal"><span class="pre">dtuf_obj</span></code> with a username, password and <code class="docutils literal"><span class="pre">response</span></code> before it returns.</li>
+<li><strong>auth</strong> (<em>function</em><em>(</em><em>dtuf_obj</em><em>, </em><em>response</em><em>)</em>) &#8211; Authentication function to be called whenever authentication to the registry is required. Receives the <a class="reference internal" href="#dtuf.DTufBase" title="dtuf.DTufBase"><code class="xref py py-class docutils literal"><span class="pre">DTufBase</span></code></a> object and a HTTP response object. It should call <a class="reference internal" href="#dtuf.DTufBase.authenticate" title="dtuf.DTufBase.authenticate"><code class="xref py py-meth docutils literal"><span class="pre">DTufBase.authenticate()</span></code></a> on <code class="docutils literal"><span class="pre">dtuf_obj</span></code> with a username, password and <code class="docutils literal"><span class="pre">response</span></code> before it returns.</li>
 <li><strong>insecure</strong> (<em>bool</em>) &#8211; Use HTTP instead of HTTPS (which is the default) when connecting to the registry.</li>
 <li><strong>auth_host</strong> (<em>str</em>) &#8211; Host to use for token authentication. If set, overrides host returned by then registry.</li>
 <li><strong>root_lifetime</strong> (<em>datetime.timedelta</em>) &#8211; Lifetime of the TUF <a class="reference external" href="https://github.com/theupdateframework/tuf/blob/develop/docs/tuf-spec.txt#L235">root metadata</a>. After this time expires, you&#8217;ll need to call <a class="reference internal" href="#dtuf.DTufMaster.reset_keys" title="dtuf.DTufMaster.reset_keys"><code class="xref py py-meth docutils literal"><span class="pre">reset_keys()</span></code></a> and <a class="reference internal" href="#dtuf.DTufMaster.push_metadata" title="dtuf.DTufMaster.push_metadata"><code class="xref py py-meth docutils literal"><span class="pre">push_metadata()</span></code></a> to re-sign the metadata. Defaults to <code class="docutils literal"><span class="pre">tuf.repository_tool.ROOT_EXPIRATION</span></code> (1 year).</li>
@@ -459,7 +459,7 @@ with the root private key when you called <a class="reference internal" href="#d
 <li><strong>targets_key_password</strong> &#8211; Password to use for decrypting the TUF targets private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
 <li><strong>snapshot_key_password</strong> &#8211; Password to use for decrypting the TUF snapshot private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
 <li><strong>timestamp_key_password</strong> &#8211; Password to use for decrypting the TUF timestamp private key. You&#8217;ll be prompted for one if you don&#8217;t supply it.</li>
-<li><strong>progress</strong> (<em>function</em><em>(</em><em>dgst</em><em>, </em><em>chunk</em><em>, </em><em>total</em><em>)</em><em></em>) &#8211; Optional function to call as the upload progresses. The function will be called with the hash of the content of the file currently being uploaded, the blob just read from the file and the total size of the file.</li>
+<li><strong>progress</strong> (<em>function</em><em>(</em><em>dgst</em><em>, </em><em>chunk</em><em>, </em><em>total</em><em>)</em>) &#8211; Optional function to call as the upload progresses. The function will be called with the hash of the content of the file currently being uploaded, the blob just read from the file and the total size of the file.</li>
 </ul>
 </td>
 </tr>
@@ -481,7 +481,7 @@ list of files or existing target names.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>target</strong> (<em>str</em>) &#8211; Name to give the data.</li>
 <li><strong>filename_or_target_list</strong> (<em>list</em>) &#8211; List of data to upload. Each item is either a filename or an existing target name. Existing target names should be prepended with <code class="docutils literal"><span class="pre">&#64;</span></code> in order to distinguish them from filenames.</li>
-<li><strong>kwargs</strong> (<em>dict</em><em>(</em><em>{'progress': function</em><em>(</em><em>dgst</em><em>, </em><em>chunk</em><em>, </em><em>total</em><em>)</em><em>}</em><em>)</em><em></em>) &#8211; Contains an optional <code class="docutils literal"><span class="pre">progress</span></code> member which is a function to call as the upload progresses. The function will be called with the hash of the content of the file currently being uploaded, the blob just read from the file and the total size of the file.</li>
+<li><strong>kwargs</strong> (<em>dict</em><em>(</em><em>{'progress': function</em><em>(</em><em>dgst</em><em>, </em><em>chunk</em><em>, </em><em>total</em><em>)</em><em>}</em><em>)</em>) &#8211; Contains an optional <code class="docutils literal"><span class="pre">progress</span></code> member which is a function to call as the upload progresses. The function will be called with the hash of the content of the file currently being uploaded, the blob just read from the file and the total size of the file.</li>
 </ul>
 </td>
 </tr>
@@ -593,12 +593,12 @@ delete the repository and start again.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">dtuf 0.0.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">dtuf 3.1.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, David Halls.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
     </div>
   </body>
 </html>
