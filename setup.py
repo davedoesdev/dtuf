@@ -23,5 +23,6 @@ setup(
                       'pytimeparse>=1.1.7',
                       'decorator>=4.1.2',
                       'iso8601>=0.1.12',
-                      'securesystemslib>=0.10.8']
+                      'securesystemslib>=0.10.8',
+                      'colorama>=0.3.9']
 )
