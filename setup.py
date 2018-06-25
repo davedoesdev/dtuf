@@ -6,7 +6,7 @@ def read(name):
 
 setup(
     name='python-dtuf',
-    version='3.1.0',
+    version='3.2.0',
     description="Docker registry bindings for The Update Framework",
     long_description=read('README.rst'),
     keywords='docker registry tuf update framework',
@@ -16,8 +16,8 @@ setup(
     license='MIT',
     packages=['dtuf'],
     entry_points={'console_scripts': ['dtuf=dtuf.main:main']},
-    install_requires=['tuf>=0.10.1',
-                      'python-dxf>=7.1.0',
+    install_requires=['tuf>=0.11.1',
+                      'python-dxf>=7.3.0',
                       'fasteners>=0.14.1',
                       'tqdm>=4.19.4',
                       'pytimeparse>=1.1.7',

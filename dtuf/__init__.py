@@ -30,7 +30,7 @@ class _DTufConnection(object):
     def __init__(self, url):
         import tuf.settings
         self._url = url
-        _, target = urlparse.urlparse(url).path.split('//')
+        target = urlparse.urlparse(url).path.split('/')[-1]
         pos = _skip_consistent_target_digest(target)
         if pos == 0:
             self._dgst = _updater_dxf.get_alias(target)[0]
@@ -383,7 +383,7 @@ class DTufMaster(_DTufCommon):
             root_key_password)
         repository.root.add_verification_key(public_root_key)
         repository.root.load_signing_key(private_root_key)
-        repository.root.expiration = datetime.now() + self._root_lifetime
+        repository.root.expiration = datetime.utcnow() + self._root_lifetime
 
         # Add targets key to repository
         public_targets_key = import_rsa_publickey_from_file(
@@ -612,9 +612,9 @@ class DTufMaster(_DTufCommon):
             for f in Repository.get_filepaths_in_directory(self._master_targets_dir)])
 
         # Update expirations
-        repository.targets.expiration = datetime.now() + self._targets_lifetime
-        repository.snapshot.expiration = datetime.now() + self._snapshot_lifetime
-        repository.timestamp.expiration = datetime.now() + self._timestamp_lifetime
+        repository.targets.expiration = datetime.utcnow() + self._targets_lifetime
+        repository.snapshot.expiration = datetime.utcnow() + self._snapshot_lifetime
+        repository.timestamp.expiration = datetime.utcnow() + self._timestamp_lifetime
 
         # Load targets key
         if targets_key_password is None:
@@ -832,11 +832,11 @@ class DTufCopy(_DTufCommon):
         updated_targets = updater.updated_targets(
             targets, self._copy_targets_dir)
         if path.isdir(self._copy_targets_dir):
-            targets = dict([(t['filepath'][1:], True) for t in targets])
+            targets = dict([(t['filepath'], True) for t in targets])
             for t in listdir(self._copy_targets_dir):
                 if t not in targets:
                     remove(path.join(self._copy_targets_dir, t))
-        return [t['filepath'][1:] for t in updated_targets]
+        return [t['filepath'] for t in updated_targets]
 
     @_copy_repo_locked
     def _get_digests(self, target, sizes=False):
@@ -921,7 +921,7 @@ class DTufCopy(_DTufCommon):
         import tuf.client.updater
         updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
-        return [t['filepath'][1:] for t in updater.all_targets()]
+        return [t['filepath'] for t in updater.all_targets()]
 
     @_copy_repo_locked
     def get_expirations(self):

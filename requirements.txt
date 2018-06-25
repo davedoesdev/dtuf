@@ -1,5 +1,5 @@
-tuf>=0.10.1
-python-dxf>=7.1.0
+tuf>=0.11.1
+python-dxf>=7.3.0
 fasteners>=0.14.1
 tqdm>=4.19.4
 pytimeparse>=1.1.7

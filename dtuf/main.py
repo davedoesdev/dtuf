@@ -52,6 +52,7 @@ def doit(args, environ):
     log_file = environ.get('DTUF_LOG_FILE', 'dtuf.log')
     if log_file:
         tuf.settings.LOG_FILENAME = log_file
+        tuf.settings.ENABLE_FILE_LOGGING = True
     else:
         tuf.settings.ENABLE_FILE_LOGGING = False
 
