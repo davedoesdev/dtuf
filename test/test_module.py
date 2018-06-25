@@ -5,9 +5,9 @@ from os import path
 import requests
 import pytest
 import tuf
+import securesystemslib.exceptions
 import dxf.exceptions
 import dtuf.exceptions
-import securesystemslib.exceptions
 
 def _check_key_exists(dtuf_objs, key):
     assert path.exists(path.join(dtuf_objs.repo_dir, pytest.repo, 'master', 'keys', key + '_key'))

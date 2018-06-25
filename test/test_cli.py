@@ -13,9 +13,9 @@ import pytest
 import tuf
 import tqdm
 import iso8601
+import securesystemslib.exceptions
 import dxf.exceptions
 import dtuf.main
-import securesystemslib.exceptions
 
 class _UTC(tzinfo):
     # pylint: disable=unused-argument
