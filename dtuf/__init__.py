@@ -248,7 +248,7 @@ class DTufMaster(_DTufCommon):
     Docker registry using
     `The Update Framework <https://github.com/theupdateframework/tuf>`_ (TUF).
     """
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-locals
     def __init__(self, host, repo, repos_root=None,
                  auth=None, insecure=False, auth_host=None,
                  root_lifetime=None, targets_lifetime=None,
