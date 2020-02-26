@@ -16,6 +16,7 @@ import hashlib
 import re
 from os import path, getcwd, remove, makedirs, listdir
 from datetime import datetime, timedelta
+import tempfile
 from decorator import decorator
 import fasteners
 from dxf import DXFBase, DXF, hash_file, hash_bytes, split_digest
@@ -26,28 +27,37 @@ import securesystemslib.util
 import securesystemslib.settings
 securesystemslib.settings.HASH_ALGORITHMS = ['sha256']
 
-class _DTufConnection(object):
-    def __init__(self, url):
-        import tuf.settings
+class _TufResponse(object):
+    def __init__(self, url, request_kwargs):
         self._url = url
-        target = urlparse.urlparse(url).path.split('/')[-1]
+        self._request_kwargs = request_kwargs
+
+    def raise_for_status(self):
+        #pylint: disable=attribute-defined-outside-init,protected-access
+        import tuf.settings
+        target = urlparse.urlparse(self._url).path.split('/')[-1]
         pos = _skip_consistent_target_digest(target)
-        if pos == 0:
-            self._dgst = _updater_dxf.get_alias(target)[0]
-        else:
-            self._dgst = 'sha256:' + target[0:pos-1]
-        self._it, self._size = _updater_dxf.pull_blob(
-            self._dgst, size=True, chunk_size=tuf.settings.CHUNK_SIZE)
-        self._it = self._it.__iter__()
-        self._end = object()
-        self._count = 0
-        if _updater_progress:
-            _updater_progress(self._dgst, b'', self._size)
+        _updater_dxf._request_kwargs = self._request_kwargs
+        try:
+            if pos == 0:
+                self._dgst = _updater_dxf.get_alias(target)[0]
+            else:
+                self._dgst = 'sha256:' + target[0:pos-1]
+            self._it, self._size = _updater_dxf.pull_blob(
+                self._dgst, size=True, chunk_size=tuf.settings.CHUNK_SIZE)
+            self._it = self._it.__iter__()
+            self._end = object()
+            self._count = 0
+            if _updater_progress:
+                _updater_progress(self._dgst, b'', self._size)
+        finally:
+            _updater_dxf._request_kwargs = {}
 
-    def info(self):
-        return {'Content-Length': str(self._size)}
+    @property
+    def raw(self):
+        return self
 
-    def read(self, _):
+    def read(self, read_amount): #pylint: disable=unused-argument
         chunk = next(self._it, self._end)
         if chunk is self._end:
             return b''
@@ -55,6 +65,10 @@ class _DTufConnection(object):
             _updater_progress(self._dgst, chunk, self._size)
         self._count += len(chunk)
         return chunk
+
+    @property
+    def headers(self):
+        return {'Content-Length': str(self._size)}
 
     def close(self):
         # give dxf a chance to check the digest
@@ -64,8 +78,26 @@ class _DTufConnection(object):
     def __str__(self):
         return "dtuf connection to %s" % self._url
 
-def _open_connection(url):
-    return _DTufConnection(url)
+class _TufSession(object): #pylint: disable=too-few-public-methods
+    def get(self, url, **kwargs): #pylint: disable=no-self-use
+        return _TufResponse(url, kwargs)
+
+class _TufSessions(object): #pylint: disable=too-few-public-methods
+    def get(self, session_index): #pylint: disable=unused-argument,no-self-use
+        return _TufSession()
+
+_tuf_sessions = _TufSessions()
+
+class _UpdaterDXF(DXF):
+    def __init__(self, *args, **kwargs):
+        super(_UpdaterDXF, self).__init__(*args, **kwargs)
+        self._request_kwargs = {}
+
+    def _base_request(self, method, path, **kwargs): #pylint: disable=redefined-outer-name
+        request_kwargs = {}
+        request_kwargs.update(self._request_kwargs)
+        request_kwargs.update(kwargs)
+        return super(_UpdaterDXF, self)._base_request(method, path, **request_kwargs)
 
 def _is_metadata_file(target):
     return target.endswith('root.json') or \
@@ -112,7 +144,7 @@ def _copy_repo_locked(f, self, *args, **kwargs):
         import tuf.settings
         import tuf.download
         # pylint: disable=protected-access
-        tuf.download._open_connection = _open_connection
+        tuf.download._sessions = _tuf_sessions
         global _updater_dxf
         _updater_dxf = self._dxf
         tuf.settings.repositories_directory = self._copy_dir
@@ -238,7 +270,7 @@ class _DTufCommon(DTufBase):
     # pylint: disable=too-many-arguments,super-init-not-called
     def __init__(self, host, repo, repos_root=None,
                  auth=None, insecure=False, auth_host=None):
-        self._dxf = DXF(host, repo, self._wrap_auth(auth), insecure, auth_host)
+        self._dxf = _UpdaterDXF(host, repo, self._wrap_auth(auth), insecure, auth_host)
         self._repo_root = path.join(repos_root if repos_root else path.join(getcwd(), 'dtuf_repos'), repo)
 
 # pylint: disable=too-many-instance-attributes
@@ -790,10 +822,11 @@ class DTufCopy(_DTufCommon):
         # the public key.
         if root_public_key:
             dgst = self._dxf.get_alias('root.json')[0]
-            temp_file = securesystemslib.util.TempFile()
+            temp_file = tempfile.TemporaryFile()
             try:
                 it, size = self._dxf.pull_blob(dgst, size=True)
                 _write_with_progress(it, dgst, size, temp_file, progress)
+                temp_file.seek(0)
                 metadata = temp_file.read()
                 metadata_signable = json.loads(metadata.decode('utf-8'))
                 tuf.formats.check_signable_object_format(metadata_signable)
@@ -818,12 +851,14 @@ class DTufCopy(_DTufCommon):
                 })
                 if not tuf.sig.verify(metadata_signable, 'root'):
                     raise BadSignatureError('root')
-                temp_file.move(path.join(self._copy_repo_dir,
-                                         'metadata',
-                                         'current',
-                                         'root.json'))
+                securesystemslib.util.persist_temp_file(
+                    temp_file,
+                    path.join(self._copy_repo_dir,
+                              'metadata',
+                              'current',
+                              'root.json'))
             except:
-                temp_file.close_temp_file()
+                temp_file.close()
                 raise
         updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)

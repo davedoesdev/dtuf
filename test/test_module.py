@@ -97,9 +97,9 @@ def test_pull_metadata(dtuf_objs):
             # have a higher version number than the newly-created and pushed
             # master metadata. That will generate a ReplayedMetadata error.
             assert isinstance(ex2, tuf.exceptions.ReplayedMetadataError)
-            assert ex2.metadata_role == 'root'
-            assert ex2.previous_version == 1
-            assert ex2.current_version == 3
+            assert ex2.metadata_role == 'timestamp'
+            assert ex2.previous_version == 2
+            assert ex2.current_version == 8
         dir_name = path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
@@ -153,6 +153,27 @@ def _dummy_pull_target(dtuf_objs, target, n):
                 pass
     finally:
         hashlib.sha256 = orig_sha256
+
+def test_tuf_request_kwargs(dtuf_objs):
+    session = dtuf_objs.copy._dxf._sessions[0] # actually requests module pylint: disable=protected-access
+    orig_get = session.get
+    calls = [0]
+    def get(url, **kwargs):
+        calls[0] += 1
+        # dtuf defaults
+        assert kwargs['verify']
+        assert kwargs['allow_redirects']
+        # passed from tuf
+        if calls[0] == 1:
+            assert kwargs['timeout'] == 4
+            assert kwargs['stream']
+        return orig_get(url, **kwargs)
+    session.get = get
+    try:
+        _pull_target(dtuf_objs, 'hello', [pytest.blob1_hash], None)
+    finally:
+        session.get = orig_get
+    assert calls[0] == 2 # once to download target (manifest) and once to pull blob
 
 def test_pull_target(dtuf_objs):
     with pytest.raises(tuf.exceptions.UnknownTargetError):

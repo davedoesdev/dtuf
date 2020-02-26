@@ -34,39 +34,37 @@ _remove_container = os.path.join(_here, 'remove_container.sh')
 DEVNULL = open(os.devnull, 'wb')
 
 def make_dummy_root_pub_key():
-    import tuf.repository_lib
+    import tuf.repository_tool
     import securesystemslib.keys
-    return securesystemslib.keys.generate_rsa_key(tuf.repository_lib.DEFAULT_RSA_KEY_BITS)['keyval']['public']
+    return securesystemslib.keys.generate_rsa_key(tuf.repository_tool.DEFAULT_RSA_KEY_BITS)['keyval']['public']
 
-def pytest_namespace():
-    return {
-        'blob1_file': os.path.join(_fixture_dir, 'blob1'),
-        'blob2_file': os.path.join(_fixture_dir, 'blob2'),
-        'blob3_file': os.path.join(_fixture_dir, 'blob3'),
-        'blob4_file': os.path.join(_fixture_dir, 'blob4'),
+def pytest_configure(config):
+    setattr(pytest, 'blob1_file', os.path.join(_fixture_dir, 'blob1'))
+    setattr(pytest, 'blob2_file', os.path.join(_fixture_dir, 'blob2'))
+    setattr(pytest, 'blob3_file', os.path.join(_fixture_dir, 'blob3'))
+    setattr(pytest, 'blob4_file', os.path.join(_fixture_dir, 'blob4'))
 
-        'blob1_hash': os.environ['HASH1'],
-        'blob2_hash': os.environ['HASH2'],
-        'blob3_hash': os.environ['HASH3'],
-        'blob4_hash': os.environ['HASH4'],
+    setattr(pytest, 'blob1_hash', os.environ['HASH1'])
+    setattr(pytest, 'blob2_hash', os.environ['HASH2'])
+    setattr(pytest, 'blob3_hash', os.environ['HASH3'])
+    setattr(pytest, 'blob4_hash', os.environ['HASH4'])
 
-        'blob1_size': 1 * 1024 * 1024,
-        'blob2_size': 2 * 1024 * 1024,
-        'blob3_size': 2 * 1024 * 1024,
-        'blob4_size': 2 * 1024 * 1024,
+    setattr(pytest, 'blob1_size', 1 * 1024 * 1024)
+    setattr(pytest, 'blob2_size', 2 * 1024 * 1024)
+    setattr(pytest, 'blob3_size', 2 * 1024 * 1024)
+    setattr(pytest, 'blob4_size', 2 * 1024 * 1024)
 
-        'username': 'fred',
-        'password': '!WordPass0$',
+    setattr(pytest, 'username', 'fred')
+    setattr(pytest, 'password', '!WordPass0$')
 
-        'repo': 'foo/bar',
+    setattr(pytest, 'repo', 'foo/bar')
 
-        'root_key_password': 'Dummypw1',
-        'targets_key_password': 'Dummypw2',
-        'snapshot_key_password': 'Dummypw3',
-        'timestamp_key_password': 'Dummypw4',
+    setattr(pytest, 'root_key_password', 'Dummypw1')
+    setattr(pytest, 'targets_key_password', 'Dummypw2')
+    setattr(pytest, 'snapshot_key_password', 'Dummypw3')
+    setattr(pytest, 'timestamp_key_password', 'Dummypw4')
 
-        'make_dummy_root_pub_key': make_dummy_root_pub_key
-    }
+    setattr(pytest, 'make_dummy_root_pub_key', make_dummy_root_pub_key)
 
 @pytest.fixture(scope='module')
 def repo_dir(request):

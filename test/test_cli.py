@@ -166,9 +166,9 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
             # have a higher version number than the newly-created and pushed
             # master metadata. That will generate a ReplayedMetadata error.
             assert isinstance(ex2, tuf.exceptions.ReplayedMetadataError)
-            assert ex2.metadata_role == 'root'
-            assert ex2.previous_version == 1
-            assert ex2.current_version == 7
+            assert ex2.metadata_role == 'timestamp'
+            assert ex2.previous_version == 4
+            assert ex2.current_version == 15
         dir_name = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
         shutil.rmtree(dir_name)
@@ -321,42 +321,6 @@ def test_auth(dtuf_main, capsys):
         assert out == ""
         assert err == ""
 
-def test_lifetime(dtuf_main, capsys):
-    for role in ['TIMESTAMP', 'SNAPSHOT', 'TARGETS', 'ROOT']:
-        environ = {
-            'DTUF_ROOT_KEY_PASSWORD': pytest.root_key_password,
-            'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
-            'DTUF_SNAPSHOT_KEY_PASSWORD': pytest.snapshot_key_password,
-            'DTUF_TIMESTAMP_KEY_PASSWORD': pytest.timestamp_key_password,
-            'DTUF_' + role + '_LIFETIME': '1s'
-        }
-        environ.update(dtuf_main)
-        assert dtuf.main.doit(['reset-keys', pytest.repo], environ) == 0
-        test_push_metadata(environ)
-        time.sleep(2)
-        with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
-            dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
-        for ex2 in ex.value.mirror_errors.values():
-            assert isinstance(ex2, tuf.exceptions.ExpiredMetadataError)
-            assert str(ex2).startswith("Metadata u'" + role.lower() + "' expired") or \
-                   str(ex2).startswith("Metadata '" + role.lower() + "' expired")
-        capsys.readouterr()
-        dtuf.main.doit(['get-master-expirations', pytest.repo], dtuf_main)
-        out, err = capsys.readouterr()
-        assert err == ""
-        e = {}
-        for l in out.split(os.linesep):
-            if l:
-                f = l.split(': ')
-                e[f[0]] = iso8601.parse_date(f[1])
-        assert len(e) == 4
-        now = datetime.now(utc)
-        for r in ['timestamp', 'snapshot', 'targets', 'root']:
-            if r.upper() == role:
-                assert e[r] < now
-            else:
-                assert e[r] > now
-
 def test_del_target(dtuf_main, capsys):
     with pytest.raises(requests.exceptions.HTTPError) as ex:
         dtuf.main.doit(['del-target', pytest.repo, 'hello'], dtuf_main)
@@ -374,7 +338,7 @@ def test_del_target(dtuf_main, capsys):
 
 def test_reset_keys(dtuf_main, capsys):
     # create new non-root keys
-    test_create_root_key(dtuf_main)
+    test_create_metadata_keys(dtuf_main)
     # reset repository keys
     environ = {
         'DTUF_ROOT_KEY_PASSWORD': pytest.root_key_password,
@@ -387,15 +351,12 @@ def test_reset_keys(dtuf_main, capsys):
     # push metadata
     test_push_metadata(dtuf_main)
     # pull metadata
-    # this will fail even though we didn't change the root key because root.json
-    # has been updated (it stores the other public keys); unless we pass in
-    # the root public key, we don't update root.json
-    with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
-        dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
-    for ex2 in ex.value.mirror_errors.values():
-        assert isinstance(ex2, securesystemslib.exceptions.BadSignatureError)
+    # this succeeds even though root.json has been updated (it stores the other
+    # public keys) because tuf downloads the new root.json and verifies it using
+    # the root public key from the existing root.json
+    assert dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main) == 0
     capsys.readouterr()
-    # pull metadata again with public root key
+    # pull metadata again with public root key to force verification against it
     assert _pull_metadata_with_master_public_root_key(dtuf_main) == 0
     out, err = capsys.readouterr()
     assert out == "hello2" + os.linesep
@@ -415,7 +376,8 @@ def test_reset_keys(dtuf_main, capsys):
     test_push_metadata(dtuf_main)
     # pull metadata
     # this will fail because root.json has been updated; unless we pass in the
-    # root public key, we don't update root.json
+    # root public key, the root public key from the existing root.json will
+    # be used to verify the new root.json (which fails)
     with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
         dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
     for ex2 in ex.value.mirror_errors.values():
@@ -473,6 +435,42 @@ def test_auth_host(dtuf_main):
         environ.update(dtuf_main)
         with pytest.raises(requests.exceptions.ConnectionError):
             dtuf.main.doit(['list-repos'], environ)
+
+def test_lifetime(dtuf_main, capsys):
+    for role in ['TIMESTAMP', 'SNAPSHOT', 'TARGETS', 'ROOT']:
+        environ = {
+            'DTUF_ROOT_KEY_PASSWORD': pytest.root_key_password,
+            'DTUF_TARGETS_KEY_PASSWORD': pytest.targets_key_password,
+            'DTUF_SNAPSHOT_KEY_PASSWORD': pytest.snapshot_key_password,
+            'DTUF_TIMESTAMP_KEY_PASSWORD': pytest.timestamp_key_password,
+            'DTUF_' + role + '_LIFETIME': '1s'
+        }
+        environ.update(dtuf_main)
+        assert dtuf.main.doit(['reset-keys', pytest.repo], environ) == 0
+        test_push_metadata(environ)
+        time.sleep(2)
+        with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
+            dtuf.main.doit(['pull-metadata', pytest.repo], dtuf_main)
+        for ex2 in ex.value.mirror_errors.values():
+            assert isinstance(ex2, tuf.exceptions.ExpiredMetadataError)
+            assert str(ex2).startswith("Metadata u'" + role.lower() + "' expired") or \
+                   str(ex2).startswith("Metadata '" + role.lower() + "' expired")
+        capsys.readouterr()
+        dtuf.main.doit(['get-master-expirations', pytest.repo], dtuf_main)
+        out, err = capsys.readouterr()
+        assert err == ""
+        e = {}
+        for l in out.split(os.linesep):
+            if l:
+                f = l.split(': ')
+                e[f[0]] = iso8601.parse_date(f[1])
+        assert len(e) == 4
+        now = datetime.now(utc)
+        for r in ['timestamp', 'snapshot', 'targets', 'root']:
+            if r.upper() == role:
+                assert e[r] < now
+            else:
+                assert e[r] > now
 
 # pylint: disable=unused-argument
 #@pytest.mark.onlytest
