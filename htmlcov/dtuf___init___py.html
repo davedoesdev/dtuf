@@ -1919,7 +1919,7 @@
 <p id="t867" class="stm run hide_run">        <span class="nam">updated_targets</span> <span class="op">=</span> <span class="nam">updater</span><span class="op">.</span><span class="nam">updated_targets</span><span class="op">(</span><span class="strut">&nbsp;</span></p>
 <p id="t868" class="pln">            <span class="nam">targets</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_copy_targets_dir</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
 <p id="t869" class="stm run hide_run">        <span class="key">if</span> <span class="nam">path</span><span class="op">.</span><span class="nam">isdir</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">_copy_targets_dir</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
-<p id="t870" class="stm run hide_run">            <span class="nam">targets</span> <span class="op">=</span> <span class="nam">dict</span><span class="op">(</span><span class="op">[</span><span class="op">(</span><span class="nam">t</span><span class="op">[</span><span class="str">'filepath'</span><span class="op">]</span><span class="op">,</span> <span class="nam">True</span><span class="op">)</span> <span class="key">for</span> <span class="nam">t</span> <span class="key">in</span> <span class="nam">targets</span><span class="op">]</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
+<p id="t870" class="stm run hide_run">            <span class="nam">targets</span> <span class="op">=</span> <span class="op">{</span><span class="nam">t</span><span class="op">[</span><span class="str">'filepath'</span><span class="op">]</span><span class="op">:</span> <span class="nam">True</span> <span class="key">for</span> <span class="nam">t</span> <span class="key">in</span> <span class="nam">targets</span><span class="op">}</span><span class="strut">&nbsp;</span></p>
 <p id="t871" class="stm run hide_run">            <span class="key">for</span> <span class="nam">t</span> <span class="key">in</span> <span class="nam">listdir</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">_copy_targets_dir</span><span class="op">)</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
 <p id="t872" class="stm run hide_run">                <span class="key">if</span> <span class="nam">t</span> <span class="key">not</span> <span class="key">in</span> <span class="nam">targets</span><span class="op">:</span><span class="strut">&nbsp;</span></p>
 <p id="t873" class="stm run hide_run">                    <span class="nam">remove</span><span class="op">(</span><span class="nam">path</span><span class="op">.</span><span class="nam">join</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">_copy_targets_dir</span><span class="op">,</span> <span class="nam">t</span><span class="op">)</span><span class="op">)</span><span class="strut">&nbsp;</span></p>
@@ -2038,7 +2038,7 @@
     <div class="content">
         <p>
             <a class="nav" href="index.html">&#xab; index</a> &nbsp; &nbsp; <a class="nav" href="https://coverage.readthedocs.io">coverage.py v4.5.4</a>,
-            created at 2020-02-26 22:34
+            created at 2020-02-26 23:15
         </p>
     </div>
 </div>

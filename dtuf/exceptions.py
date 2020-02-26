@@ -6,7 +6,6 @@ class DTufError(Exception):
     """
     Base exception class for all dtuf errors
     """
-    pass
 
 class DTufReservedTargetError(DTufError):
     """

@@ -259,4 +259,4 @@ def doit(args, environ):
         raise
 
 def main():
-    exit(doit(sys.argv[1:], os.environ))
+    sys.exit(doit(sys.argv[1:], os.environ))

@@ -867,7 +867,7 @@ class DTufCopy(_DTufCommon):
         updated_targets = updater.updated_targets(
             targets, self._copy_targets_dir)
         if path.isdir(self._copy_targets_dir):
-            targets = dict([(t['filepath'], True) for t in targets])
+            targets = {t['filepath']: True for t in targets}
             for t in listdir(self._copy_targets_dir):
                 if t not in targets:
                     remove(path.join(self._copy_targets_dir, t))
