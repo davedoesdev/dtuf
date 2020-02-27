@@ -209,14 +209,12 @@ def test_see_pull_metadata_progress(dtuf_main):
     assert dtuf.main.doit(['pull-metadata', pytest.repo], environ) == 0
 
 # pylint: disable=too-many-arguments
-def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, capfd):
+def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, capfdbinary):
     environ = {'DTUF_BLOB_INFO': '1'}
     environ.update(dtuf_main)
     assert dtuf.main.doit(['pull-target', pytest.repo, target], environ if get_info else dtuf_main) == 0
     # pylint: disable=protected-access
-    encoding = capfd._capture.out.tmpfile.encoding
-    capfd._capture.out.tmpfile.encoding = None
-    out, err = capfd.readouterr()
+    out, err = capfdbinary.readouterr()
     if get_info:
         outs = BytesIO(out)
         for i, size in enumerate(expected_sizes):
@@ -233,17 +231,16 @@ def _pull_target(dtuf_main, target, expected_dgsts, expected_sizes, get_info, ca
             pos += size
             assert 'sha256:' + sha256.hexdigest() == expected_dgsts[i]
         assert pos == len(out)
-    assert err == ""
-    capfd._capture.out.tmpfile.encoding = encoding
+    assert err == b""
 
-def test_pull_target(dtuf_main, capfd):
+def test_pull_target(dtuf_main, capfdbinary):
     with pytest.raises(tuf.exceptions.UnknownTargetError):
         dtuf.main.doit(['pull-target', pytest.repo, 'dummy'], dtuf_main)
-    capfd.readouterr()
+    capfdbinary.readouterr()
     for get_info in [False, True]:
-        _pull_target(dtuf_main, 'hello', [pytest.blob1_hash], [pytest.blob1_size], get_info, capfd)
-        _pull_target(dtuf_main, 'there', [pytest.blob2_hash], [pytest.blob2_size], get_info, capfd)
-        _pull_target(dtuf_main, 'foobar', [pytest.blob1_hash, pytest.blob2_hash], [pytest.blob1_size, pytest.blob2_size], get_info, capfd)
+        _pull_target(dtuf_main, 'hello', [pytest.blob1_hash], [pytest.blob1_size], get_info, capfdbinary)
+        _pull_target(dtuf_main, 'there', [pytest.blob2_hash], [pytest.blob2_size], get_info, capfdbinary)
+        _pull_target(dtuf_main, 'foobar', [pytest.blob1_hash, pytest.blob2_hash], [pytest.blob1_size, pytest.blob2_size], get_info, capfdbinary)
 
 def test_pull_target_progress(dtuf_main, capfd):
     environ = {'DTUF_PROGRESS': '1'}
