@@ -1,8 +1,8 @@
 [run]
 branch = True
-include =
-    dtuf/__init__.py
-    dtuf/main.py
 
 [report]
 fail_under = 90
+include =
+    dtuf/__init__.py
+    dtuf/main.py
