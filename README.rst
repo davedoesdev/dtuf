@@ -442,8 +442,8 @@ available
 
 Coveralls page is `here <https://coveralls.io/r/davedoesdev/dtuf>`__.
 
-.. |Build Status| image:: https://travis-ci.org/davedoesdev/dtuf.png
-   :target: https://travis-ci.org/davedoesdev/dtuf
+.. |Build Status| image:: https://github.com/davedoesdev/dtuf/workflows/ci/badge.svg
+   :target: https://github.com/davedoesdev/dtuf/actions
 .. |Coverage Status| image:: https://coveralls.io/repos/davedoesdev/dtuf/badge.png?branch=master
    :target: https://coveralls.io/r/davedoesdev/dtuf?branch=master
 .. |PyPI version| image:: https://badge.fury.io/py/python-dtuf.png

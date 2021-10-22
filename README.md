@@ -1,4 +1,4 @@
-# dtuf&nbsp;&nbsp;&nbsp;[![Build Status](https://travis-ci.org/davedoesdev/dtuf.png)](https://travis-ci.org/davedoesdev/dtuf) [![Coverage Status](https://coveralls.io/repos/davedoesdev/dtuf/badge.png?branch=master)](https://coveralls.io/r/davedoesdev/dtuf?branch=master) [![PyPI version](https://badge.fury.io/py/python-dtuf.png)](http://badge.fury.io/py/python-dtuf)
+# dtuf&nbsp;&nbsp;&nbsp;[![Build Status](https://github.com/davedoesdev/dtuf/workflows/ci/badge.svg)](https://github.com/davedoesdev/dtuf/actions) [![Coverage Status](https://coveralls.io/repos/davedoesdev/dtuf/badge.png?branch=master)](https://coveralls.io/r/davedoesdev/dtuf?branch=master) [![PyPI version](https://badge.fury.io/py/python-dtuf.png)](http://badge.fury.io/py/python-dtuf)
 
 Docker registry bindings for
 [The Update Framework](http://theupdateframework.com/) in Python.
