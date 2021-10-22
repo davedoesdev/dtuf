@@ -1,2 +1,2 @@
 [MESSAGES CONTROL]
-disable=line-too-long,invalid-name,missing-docstring,len-as-condition,useless-object-inheritance,import-outside-toplevel
+disable=line-too-long,invalid-name,missing-docstring,len-as-condition,useless-object-inheritance,import-outside-toplevel,super-with-arguments,consider-using-f-string,bad-option-value

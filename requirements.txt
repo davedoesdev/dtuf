@@ -11,5 +11,4 @@ colorama>=0.4.3
 pylint>=1.9.5
 pytest>=4.6.9
 pytest-cov>=2.8.1
-pytest-instafail>=0.4.1.post0
 coveralls>=1.11.1

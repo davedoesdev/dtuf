@@ -31,6 +31,11 @@ class _TufResponse(object):
     def __init__(self, url, request_kwargs):
         self._url = url
         self._request_kwargs = request_kwargs
+        self._it = None
+        self._count = 0
+
+    def __enter__(self):
+        return self
 
     def raise_for_status(self):
         #pylint: disable=attribute-defined-outside-init,protected-access
@@ -47,7 +52,6 @@ class _TufResponse(object):
                 self._dgst, size=True, chunk_size=tuf.settings.CHUNK_SIZE)
             self._it = self._it.__iter__()
             self._end = object()
-            self._count = 0
             if _updater_progress:
                 _updater_progress(self._dgst, b'', self._size)
         finally:
@@ -66,14 +70,13 @@ class _TufResponse(object):
         self._count += len(chunk)
         return chunk
 
-    @property
-    def headers(self):
-        return {'Content-Length': str(self._size)}
-
     def close(self):
         # give dxf a chance to check the digest
-        if self._count == self._size:
+        if (self._it is not None) and (self._count == self._size):
             next(self._it, self._end)
+
+    def __exit__(self, *args):
+        self.close()
 
     def __str__(self):
         return "dtuf connection to %s" % self._url
@@ -144,7 +147,8 @@ def _copy_repo_locked(f, self, *args, **kwargs):
         import tuf.settings
         import tuf.download
         # pylint: disable=protected-access
-        tuf.download._sessions = _tuf_sessions
+        if hasattr(tuf.download, '_sessions'):
+            tuf.download._sessions = _tuf_sessions
         global _updater_dxf
         _updater_dxf = self._dxf
         tuf.settings.repositories_directory = self._copy_dir
@@ -272,6 +276,8 @@ class _DTufCommon(DTufBase):
                  auth=None, insecure=False, auth_host=None):
         self._dxf = _UpdaterDXF(host, repo, self._wrap_auth(auth), insecure, auth_host)
         self._repo_root = path.join(repos_root if repos_root else path.join(getcwd(), 'dtuf_repos'), repo)
+        import tuf.settings
+        tuf.settings.FILE_HASH_ALGORITHMS = ['sha256']
 
 # pylint: disable=too-many-instance-attributes
 class DTufMaster(_DTufCommon):
@@ -354,10 +360,13 @@ class DTufMaster(_DTufCommon):
         :param password: Password to use for encrypting the private key. You'll be prompted for one if you don't supply it.
         :type password: str
         """
-        from tuf.repository_tool import generate_and_write_rsa_keypair
+        from tuf.repository_tool import generate_and_write_rsa_keypair, \
+                                        generate_and_write_rsa_keypair_with_prompt
         if password is None:
             print('generating root key...')
-        generate_and_write_rsa_keypair(self._root_key_file, password=password)
+            generate_and_write_rsa_keypair_with_prompt(filepath=self._root_key_file)
+        else:
+            generate_and_write_rsa_keypair(password, filepath=self._root_key_file)
 
     @_master_repo_locked
     def create_metadata_keys(self,
@@ -382,19 +391,26 @@ class DTufMaster(_DTufCommon):
         :param timestamp_key_password: Password to use for encrypting the TUF timestamp private key. You'll be prompted for one if you don't supply it.
         :type password: str
         """
-        from tuf.repository_tool import generate_and_write_rsa_keypair
+        from tuf.repository_tool import generate_and_write_rsa_keypair, \
+                                        generate_and_write_rsa_keypair_with_prompt
+
         if targets_key_password is None:
             print('generating targets key...')
-        generate_and_write_rsa_keypair(self._targets_key_file,
-                                       password=targets_key_password)
+            generate_and_write_rsa_keypair_with_prompt(filepath=self._targets_key_file)
+        else:
+            generate_and_write_rsa_keypair(targets_key_password, filepath=self._targets_key_file)
+
         if snapshot_key_password is None:
             print('generating snapshot key...')
-        generate_and_write_rsa_keypair(self._snapshot_key_file,
-                                       password=snapshot_key_password)
+            generate_and_write_rsa_keypair_with_prompt(filepath=self._snapshot_key_file)
+        else:
+            generate_and_write_rsa_keypair(snapshot_key_password, filepath=self._snapshot_key_file)
+
         if timestamp_key_password is None:
             print('generating timestamp key...')
-        generate_and_write_rsa_keypair(self._timestamp_key_file,
-                                       password=timestamp_key_password)
+            generate_and_write_rsa_keypair_with_prompt(filepath=self._timestamp_key_file)
+        else:
+            generate_and_write_rsa_keypair(timestamp_key_password, filepath=self._timestamp_key_file)
 
     # pylint: disable=too-many-locals
     def _add_metadata(self,
@@ -403,8 +419,9 @@ class DTufMaster(_DTufCommon):
                       targets_key_password=None,
                       snapshot_key_password=None,
                       timestamp_key_password=None):
-        from tuf.repository_tool import import_rsa_publickey_from_file, \
-                                        import_rsa_privatekey_from_file
+        from tuf.repository_tool import import_rsa_publickey_from_file
+        from tuf.repository_lib import import_rsa_privatekey_from_file
+
         # Add root key to repository
         public_root_key = import_rsa_publickey_from_file(
             self._root_key_file + '.pub')
@@ -640,7 +657,7 @@ class DTufMaster(_DTufCommon):
         # Update targets
         repository.targets.clear_targets()
         repository.targets.add_targets([
-            _strip_consistent_target_digest(f)
+            path.relpath(_strip_consistent_target_digest(f), self._master_targets_dir)
             for f in Repository.get_filepaths_in_directory(self._master_targets_dir)])
 
         # Update expirations
@@ -677,29 +694,13 @@ class DTufMaster(_DTufCommon):
         repository.write('snapshot', consistent_snapshot=True)
         repository.write('timestamp', consistent_snapshot=True)
 
-        # Upload root.json and timestamp.json without version prefix
-        for f in ['root.json', 'timestamp.json']:
-            dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
-                                       progress)
-            self._dxf.set_alias(f, dgst)
-
-        # Upload consistent snapshot versions of current metadata files...
-        # first load timestamp.json
-        with open(path.join(self._master_staged_dir, 'timestamp.json'), 'rb') as f:
-            timestamp = json.loads(f.read().decode('utf-8'))
-        # get timestamp prefix
-        files = ['{}.timestamp.json'.format(timestamp['signed']['version'])]
-        # get snapshot prefix
-        snapshot_cs = '{}.snapshot.json'.format(timestamp['signed']['meta']['snapshot.json']['version'])
-        files.append(snapshot_cs)
-        # load prefixed snapshot.json
-        with open(path.join(self._master_staged_dir, snapshot_cs), 'rb') as f:
-            snapshot = json.loads(f.read().decode('utf-8'))
-        # get targets and root prefixes
-        files.append('{}.targets.json'.format(snapshot['signed']['meta']['targets.json']['version']))
-        files.append('{}.root.json'.format(snapshot['signed']['meta']['root.json']['version']))
-        # Upload metadata
-        for f in files:
+        # Upload metadata files
+        for f in ['root.json',
+                  'timestamp.json',
+                  '{}.root.json'.format(repository.root.version),
+                  '{}.timestamp.json'.format(repository.timestamp.version),
+                  '{}.snapshot.json'.format(repository.snapshot.version),
+                  '{}.targets.json'.format(repository.targets.version)]:
             dgst = self._dxf.push_blob(path.join(self._master_staged_dir, f),
                                        progress)
             self._dxf.set_alias(f, dgst)
@@ -822,7 +823,7 @@ class DTufCopy(_DTufCommon):
         # the public key.
         if root_public_key:
             dgst = self._dxf.get_alias('root.json')[0]
-            temp_file = tempfile.TemporaryFile()
+            temp_file = tempfile.TemporaryFile() # pylint: disable=consider-using-with
             try:
                 it, size = self._dxf.pull_blob(dgst, size=True)
                 _write_with_progress(it, dgst, size, temp_file, progress)
@@ -862,8 +863,10 @@ class DTufCopy(_DTufCommon):
                 raise
         updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
+        if hasattr(updater, 'fetcher'):
+            updater.fetcher._sessions = _tuf_sessions # pylint: disable=protected-access,no-member
         updater.refresh(False)
-        targets = updater.all_targets()
+        targets = updater._targets_of_role('targets', skip_refresh=True) # pylint: disable=protected-access
         updated_targets = updater.updated_targets(
             targets, self._copy_targets_dir)
         if path.isdir(self._copy_targets_dir):
@@ -878,6 +881,8 @@ class DTufCopy(_DTufCommon):
         import tuf.client.updater
         updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
+        if hasattr(updater, 'fetcher'):
+            updater.fetcher._sessions = _tuf_sessions # pylint: disable=protected-access,no-member
         tgt = updater.get_one_valid_targetinfo(target)
         updater.download_target(tgt, self._copy_targets_dir)
         with open(path.join(self._copy_targets_dir, target), 'rb') as f:
@@ -956,7 +961,9 @@ class DTufCopy(_DTufCommon):
         import tuf.client.updater
         updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
-        return [t['filepath'] for t in updater.all_targets()]
+        if hasattr(updater, 'fetcher'):
+            updater.fetcher._sessions = _tuf_sessions # pylint: disable=protected-access,no-member
+        return [t['filepath'] for t in updater._targets_of_role('targets', skip_refresh=True)] # pylint: disable=protected-access
 
     @_copy_repo_locked
     def get_expirations(self):
@@ -969,6 +976,8 @@ class DTufCopy(_DTufCommon):
         import tuf.client.updater
         updater = tuf.client.updater.Updater('repository',
                                              self._repository_mirrors)
+        if hasattr(updater, 'fetcher'):
+            updater.fetcher._sessions = _tuf_sessions # pylint: disable=protected-access,no-member
         metadata = updater.metadata['current']
         return {
             'root': iso8601.parse_date(metadata['root']['expires']),

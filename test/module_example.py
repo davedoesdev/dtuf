@@ -49,7 +49,8 @@ dtuf = DTufCopy('registry-1.docker.io',
 
 with open('dtuf_repos/' + \
           os.environ['DOCKER_HUB_REPO'] + \
-          '/master/keys/root_key.pub') as f:
+          '/master/keys/root_key.pub',
+          encoding='utf-8') as f:
     assert dtuf.pull_metadata(f.read()) == ['demo.txt']
 
 s = b''

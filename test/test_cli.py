@@ -167,7 +167,10 @@ def test_pull_metadata(dtuf_main, monkeypatch, capsys):
             # master metadata. That will generate a ReplayedMetadata error.
             assert isinstance(ex2, tuf.exceptions.ReplayedMetadataError)
             assert ex2.metadata_role == 'timestamp'
-            assert ex2.previous_version == 4
+            if hasattr(ex2, 'previous_version'):
+                assert ex2.previous_version == 4
+            else:
+                assert ex2.downloaded_version == 4
             assert ex2.current_version == 15
         dir_name = path.join(dtuf_main['TEST_REPO_DIR'], pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
@@ -260,6 +263,8 @@ def test_see_pull_target_progress(dtuf_main, monkeypatch):
         # pylint: disable=no-self-use
         def write(self, _):
             time.sleep(0.05)
+        def flush(self):
+            pass
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     assert dtuf.main.doit(['pull-target', pytest.repo, 'hello'], environ) == 0
 

@@ -31,7 +31,7 @@ _registry_dir = os.path.join(_here, 'registry')
 _auth_dir = os.path.join(_here, 'auth')
 _remove_container = os.path.join(_here, 'remove_container.sh')
 
-DEVNULL = open(os.devnull, 'wb')
+DEVNULL = open(os.devnull, 'wb') # # pylint: disable=consider-using-with
 
 def make_dummy_root_pub_key():
     import tuf.repository_tool
@@ -141,13 +141,15 @@ def dtuf_objs(repo_dir, request):
                                       auth,
                                       not auth)
     r = DTufObjs()
+    lex = Exception('should never be thrown')
     for _ in range(5):
         try:
             assert r.master.list_repos() == []
             return r
         except requests.exceptions.ConnectionError as ex:
+            lex = ex
             time.sleep(1)
-    raise ex
+    raise lex
 
 @pytest.fixture(scope='module', params=_fixture_params)
 def dtuf_main(repo_dir, request):
@@ -162,10 +164,12 @@ def dtuf_main(repo_dir, request):
     if auth:
         environ['DTUF_USERNAME'] = pytest.username
         environ['DTUF_PASSWORD'] = pytest.password
+    lex = Exception('should never be thrown')
     for _ in range(5):
         try:
             assert dtuf.main.doit(['list-repos'], environ) == 0
             return environ
         except requests.exceptions.ConnectionError as ex:
+            lex = ex
             time.sleep(1)
-    raise ex
+    raise lex

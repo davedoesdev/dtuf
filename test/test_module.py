@@ -29,8 +29,12 @@ def test_not_found(dtuf_objs):
             with pytest.raises(tuf.exceptions.NoWorkingMirrorError) as ex:
                 dtuf_objs.copy.blob_sizes(target)
             for ex2 in ex.value.mirror_errors.values():
-                assert isinstance(ex2, requests.exceptions.HTTPError)
-                assert ex2.response.status_code == requests.codes.not_found
+                if hasattr(tuf.exceptions, 'FetcherHTTPError'):
+                    assert isinstance(ex2, tuf.exceptions.FetcherHTTPError)
+                    assert ex2.status_code == requests.codes.not_found
+                else:
+                    assert isinstance(ex2, requests.exceptions.HTTPError)
+                    assert ex2.response.status_code == requests.codes.not_found
         else:
             with pytest.raises(tuf.exceptions.RepositoryError):
                 dtuf_objs.copy.blob_sizes(target)
@@ -98,7 +102,10 @@ def test_pull_metadata(dtuf_objs):
             # master metadata. That will generate a ReplayedMetadata error.
             assert isinstance(ex2, tuf.exceptions.ReplayedMetadataError)
             assert ex2.metadata_role == 'timestamp'
-            assert ex2.previous_version == 2
+            if hasattr(ex2, 'previous_version'):
+                assert ex2.previous_version == 2
+            else:
+                assert ex2.downloaded_version == 2
             assert ex2.current_version == 8
         dir_name = path.join(dtuf_objs.repo_dir, pytest.repo, 'copy', 'repository', 'metadata', 'current')
         assert dir_name.startswith('/tmp/') # check what we're about to remove!
