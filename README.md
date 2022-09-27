@@ -1,5 +1,7 @@
 # dtuf&nbsp;&nbsp;&nbsp;[![Build Status](https://github.com/davedoesdev/dtuf/workflows/ci/badge.svg)](https://github.com/davedoesdev/dtuf/actions) [![Coverage Status](https://coveralls.io/repos/davedoesdev/dtuf/badge.png?branch=master)](https://coveralls.io/r/davedoesdev/dtuf?branch=master) [![PyPI version](https://badge.fury.io/py/python-dtuf.png)](http://badge.fury.io/py/python-dtuf)
 
+**This module is now DEPRECATED! [The Update Framework](http://theupdateframework.com/) has moved to version 2 and I don't have time to update dtuf to work with it.**
+
 Docker registry bindings for
 [The Update Framework](http://theupdateframework.com/) in Python.
 Uses [dxf](https://github.com/davedoesdev/dxf) to store TUF metadata and target

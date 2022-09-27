@@ -6,7 +6,7 @@ def read(name):
 
 setup(
     name='python-dtuf',
-    version='4.0.1',
+    version='4.0.2',
     description="Docker registry bindings for The Update Framework",
     long_description=read('README.rst'),
     keywords='docker registry tuf update framework',

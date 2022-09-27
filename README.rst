@@ -1,5 +1,9 @@
 |Build Status| |Coverage Status| |PyPI version|
 
+**This module is now DEPRECATED!**\ `The Update
+Framework <http://theupdateframework.com/>`__\ **has moved to version 2
+and I don’t have time to update dtuf to work with it.**
+
 Docker registry bindings for `The Update
 Framework <http://theupdateframework.com/>`__ in Python. Uses
 `dxf <https://github.com/davedoesdev/dxf>`__ to store TUF metadata and
